@@ -1,1 +1,124 @@
 @import "tailwindcss";
+
+/* === BASE RESET === */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* CSS variables are set by the theme store at runtime.
+   No defaults here — theme-store.ts applies midnight on init. */
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-dim);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-ghost);
+}
+
+/* === KBD BADGES === */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--kbd-text);
+  line-height: 1;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* === OUTLINE ITEM ROWS === */
+.outline-item-row {
+  background: transparent;
+}
+.outline-item-row:hover {
+  background: var(--bg-hover);
+}
+.outline-item-row.is-focused {
+  background: var(--bg-focus);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+.outline-item-row.is-focused:hover {
+  background: var(--bg-focus);
+}
+
+/* === TOPBAR BUTTONS === */
+.topbar-btn {
+  background: none;
+  color: var(--text-tertiary);
+}
+.topbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+.topbar-btn.is-active {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+/* === CHEVRON TOGGLE === */
+.chevron-toggle {
+  background: none;
+  color: var(--text-tertiary);
+}
+.chevron-toggle:hover {
+  color: var(--text-secondary);
+  background: var(--bg-raised);
+}
+
+/* === THEME SWITCHER ITEMS === */
+.theme-option {
+  background: transparent;
+}
+.theme-option:hover {
+  background: var(--bg-hover);
+}
+.theme-option.is-active {
+  background: var(--bg-hover);
+}
+
+/* === ANIMATIONS === */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
