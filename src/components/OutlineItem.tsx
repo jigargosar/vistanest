@@ -27,6 +27,8 @@ export const OutlineItem = memo(function OutlineItem({
     setFocused(item.id)
   }, [setFocused, item.id])
 
+  const isTopLevel = depth === 0
+
   const rowClasses = [
     'outline-item-row',
     'flex items-start gap-1 rounded-md cursor-default transition-colors relative',
@@ -42,15 +44,16 @@ export const OutlineItem = memo(function OutlineItem({
       style={{
         paddingLeft: depth * 28 + 8,
         paddingRight: 8,
-        paddingTop: 7,
-        paddingBottom: 7,
+        paddingTop: isTopLevel ? 12 : 7,
+        paddingBottom: isTopLevel ? 12 : 7,
       }}
     >
       {/* Chevron toggle */}
       <button
         onClick={hasChildren ? handleToggle : undefined}
-        className="chevron-toggle w-6 h-7 flex items-center justify-center shrink-0 border-none rounded p-0 transition-colors"
+        className="chevron-toggle w-6 flex items-center justify-center shrink-0 border-none rounded p-0 transition-colors"
         style={{
+          height: isTopLevel ? 32 : 28,
           cursor: hasChildren ? 'pointer' : 'default',
           visibility: hasChildren ? 'visible' : 'hidden',
         }}
@@ -73,11 +76,11 @@ export const OutlineItem = memo(function OutlineItem({
       <span
         className="flex-1 flex items-baseline flex-wrap gap-2"
         style={{
-          fontSize: depth === 0 ? 17 : 16,
-          fontWeight: depth === 0 ? 500 : 400,
-          lineHeight: 1.75,
-          letterSpacing: '-0.008em',
-          minHeight: 28,
+          fontSize: isTopLevel ? 24 : 16,
+          fontWeight: isTopLevel ? 500 : 400,
+          lineHeight: isTopLevel ? 1.4 : 1.75,
+          letterSpacing: isTopLevel ? '-0.02em' : '-0.008em',
+          minHeight: isTopLevel ? 34 : 28,
           color: item.done ? 'var(--done-text)' : 'var(--text-primary)',
           textDecoration: item.done ? 'line-through' : undefined,
           textDecorationColor: item.done ? 'var(--done-line)' : undefined,
@@ -85,40 +88,32 @@ export const OutlineItem = memo(function OutlineItem({
       >
         {item.text}
 
-        {item.note && (
-          <span
-            className="text-sm font-light italic"
-            style={{ color: 'var(--text-secondary)' }}
-          >
-            &mdash; {item.note}
-          </span>
-        )}
-
+        {/* Kbd badges inline with text */}
         {item.tags?.map((tag) => (
           <InlineTag key={tag.label} label={tag.label} type={tag.type} />
         ))}
+
+        {/* Collapsed child count inline */}
+        {item.collapsed && hasChildren && (
+          <span
+            style={{
+              fontSize: 11,
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--text-ghost)',
+            }}
+          >
+            {childCount} items
+          </span>
+        )}
       </span>
 
-      {/* Child count for collapsed parents */}
-      {item.collapsed && hasChildren && (
+      {/* Note — below text, not inline */}
+      {item.note && (
         <span
-          className="shrink-0 pt-0.5"
-          style={{
-            fontSize: 11,
-            fontFamily: 'var(--font-mono)',
-            color: 'var(--text-ghost)',
-          }}
+          className="text-sm font-light italic"
+          style={{ color: 'var(--text-secondary)' }}
         >
-          {childCount} items
-        </span>
-      )}
-
-      {/* Shortcut hints on focused row */}
-      {isFocused && (
-        <span className="flex gap-1 items-center shrink-0 ml-auto pl-3">
-          <kbd>Enter</kbd>
-          <kbd>Space</kbd>
-          <kbd>Tab</kbd>
+          &mdash; {item.note}
         </span>
       )}
     </div>
