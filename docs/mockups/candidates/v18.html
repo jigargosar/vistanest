@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VistaNest — Hierarchical Outliner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-deep: #101014;
+  --bg-surface: #16161c;
+  --bg-raised: #1e1e26;
+  --bg-hover: #24242e;
+  --bg-focus: #1c1c28;
+  --border-subtle: #2a2a36;
+  --border-dim: #222230;
+  --text-primary: #d8d8e0;
+  --text-secondary: #8888a0;
+  --text-tertiary: #5c5c72;
+  --text-ghost: #3e3e52;
+  --accent: #7b9edb;
+  --accent-dim: #4a6490;
+  --accent-glow: rgba(123, 158, 219, 0.08);
+  --accent-focus: rgba(123, 158, 219, 0.04);
+  --badge-bg: #1a1a24;
+  --badge-border: #2e2e3c;
+  --badge-text: #6a6a82;
+  --done-text: #4a4a5e;
+  --note-text: #7a7a92;
+  --chevron: #4a4a60;
+  --chevron-hover: #7a7a96;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --line-height: 1.65;
+  --item-gap: 2px;
+  --indent: 28px;
+  --content-width: 740px;
+  --topbar-height: 52px;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: var(--line-height);
+  min-height: 100vh;
+  overflow-y: scroll;
+}
+
+/* --- Grain overlay --- */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.018;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px;
+}
+
+/* ====== TOP BAR ====== */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  height: var(--topbar-height);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  backdrop-filter: blur(12px);
+  background: rgba(22, 22, 28, 0.92);
+}
+
+.topbar-logo {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  user-select: none;
+}
+
+.topbar-logo .logo-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, var(--accent-dim), var(--accent));
+  opacity: 0.7;
+  position: relative;
+}
+
+.topbar-logo .logo-mark::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--bg-deep);
+  opacity: 0.5;
+}
+
+.topbar-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.topbar-breadcrumb span {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.topbar-breadcrumb span:hover {
+  color: var(--text-secondary);
+}
+
+.topbar-breadcrumb .bc-sep {
+  font-size: 10px;
+  opacity: 0.5;
+  cursor: default;
+}
+
+.topbar-breadcrumb .bc-sep:hover {
+  color: var(--text-tertiary);
+}
+
+.topbar-breadcrumb .bc-current {
+  color: var(--text-secondary);
+}
+
+.topbar-spacer { flex: 1; }
+
+.topbar-search {
+  position: relative;
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.topbar-search input {
+  width: 100%;
+  height: 30px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 0 10px 0 30px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.topbar-search input::placeholder {
+  color: var(--text-ghost);
+}
+
+.topbar-search input:focus {
+  border-color: var(--accent-dim);
+  background: var(--bg-hover);
+}
+
+.topbar-search .search-icon {
+  position: absolute;
+  left: 9px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-ghost);
+  width: 14px;
+  height: 14px;
+}
+
+.topbar-search .search-shortcut {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.topbar-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  border: none;
+  background: none;
+}
+
+.topbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.topbar-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* ====== MAIN CONTENT ====== */
+.main {
+  padding-top: calc(var(--topbar-height) + 40px);
+  padding-bottom: 200px;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+/* ====== LIST TITLE ====== */
+.list-header {
+  margin-bottom: 36px;
+}
+
+.list-title {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+
+.list-meta {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.list-meta .meta-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+}
+
+/* ====== OUTLINE ITEMS ====== */
+.outline {
+  list-style: none;
+}
+
+.outline-item {
+  position: relative;
+}
+
+.item-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 7px 8px 7px 0;
+  border-radius: 6px;
+  cursor: default;
+  transition: background 0.1s;
+  position: relative;
+  min-height: 38px;
+}
+
+.item-row:hover {
+  background: var(--bg-hover);
+}
+
+.item-row.is-focused {
+  background: var(--accent-focus);
+  box-shadow: inset 2px 0 0 var(--accent-dim);
+}
+
+.item-row.is-focused:hover {
+  background: var(--accent-glow);
+}
+
+/* Chevron toggle */
+.item-toggle {
+  width: 24px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  margin-top: 1px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.item-toggle:hover {
+  background: var(--bg-raised);
+}
+
+.item-toggle svg {
+  width: 12px;
+  height: 12px;
+  color: var(--chevron);
+  transition: color 0.12s, transform 0.18s ease;
+}
+
+.item-toggle:hover svg {
+  color: var(--chevron-hover);
+}
+
+.item-toggle.is-expanded svg {
+  transform: rotate(90deg);
+}
+
+.item-toggle.is-leaf {
+  cursor: default;
+  pointer-events: none;
+}
+
+.item-toggle.is-leaf svg {
+  opacity: 0;
+}
+
+/* Bullet for leaf nodes */
+.item-toggle.is-leaf::after {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+}
+
+/* Item content */
+.item-content {
+  flex: 1;
+  font-size: 15.5px;
+  line-height: 1.6;
+  padding-top: 2px;
+  color: var(--text-primary);
+}
+
+.item-content.is-done {
+  color: var(--done-text);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-ghost);
+}
+
+/* Inline note beneath item */
+.item-note {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--note-text);
+  margin-top: 3px;
+  font-weight: 300;
+}
+
+/* Keyboard shortcut badges */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  min-width: 18px;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--badge-text);
+  background: var(--badge-bg);
+  border: 1px solid var(--badge-border);
+  border-radius: 3px;
+  line-height: 1;
+  vertical-align: 1px;
+  margin-left: 6px;
+  letter-spacing: 0;
+  user-select: none;
+}
+
+/* Tag pills */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  font-size: 11px;
+  font-weight: 500;
+  border-radius: 9px;
+  margin-left: 8px;
+  vertical-align: 1px;
+  letter-spacing: 0.02em;
+  user-select: none;
+}
+
+.tag-priority {
+  background: rgba(219, 123, 123, 0.1);
+  color: #c47878;
+  border: 1px solid rgba(219, 123, 123, 0.15);
+}
+
+.tag-wip {
+  background: rgba(200, 180, 100, 0.08);
+  color: #a89860;
+  border: 1px solid rgba(200, 180, 100, 0.12);
+}
+
+.tag-done {
+  background: rgba(100, 180, 130, 0.08);
+  color: #6a9a78;
+  border: 1px solid rgba(100, 180, 130, 0.12);
+}
+
+/* Nested children */
+.outline-children {
+  list-style: none;
+  padding-left: var(--indent);
+}
+
+/* Connection lines for nested items */
+.outline-children {
+  position: relative;
+}
+
+.outline-children::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 0;
+  bottom: 10px;
+  width: 1px;
+  background: var(--border-dim);
+}
+
+/* ====== HELP BAR (bottom) ====== */
+.helpbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  background: rgba(22, 22, 28, 0.95);
+  border-top: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+}
+
+.helpbar-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--text-ghost);
+}
+
+.helpbar-item .kbd {
+  margin-left: 0;
+  height: 16px;
+  min-width: 16px;
+  padding: 0 4px;
+  font-size: 9.5px;
+}
+
+.helpbar-item span {
+  color: var(--text-tertiary);
+}
+
+/* ====== ANIMATIONS ====== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.outline > .outline-item {
+  animation: fadeInUp 0.35s ease both;
+}
+
+/* Stagger delays generated by JS below */
+
+/* ====== SELECTION COUNT CHIP ====== */
+.selection-chip {
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--accent-dim);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 20px;
+  display: none;
+  align-items: center;
+  gap: 8px;
+  z-index: 200;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+/* ====== SCROLLBAR ====== */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-ghost);
+}
+
+/* ====== FOCUS RING OVERRIDE ====== */
+*:focus-visible {
+  outline: 1px solid var(--accent-dim);
+  outline-offset: 2px;
+}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<header class="topbar">
+  <div class="topbar-logo">
+    <div class="logo-mark"></div>
+    VistaNest
+  </div>
+
+  <div class="topbar-breadcrumb">
+    <span>My Lists</span>
+    <span class="bc-sep">/</span>
+    <span class="bc-current">Product Roadmap Q2</span>
+  </div>
+
+  <div class="topbar-spacer"></div>
+
+  <div class="topbar-search">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input type="text" placeholder="Search items..." />
+    <span class="search-shortcut"><span class="kbd">/</span></span>
+  </div>
+
+  <div class="topbar-actions">
+    <button class="topbar-btn" title="Undo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+      </svg>
+    </button>
+    <button class="topbar-btn" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/>
+        <circle cx="8" cy="6" r="1.5" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="10" cy="18" r="1.5" fill="currentColor" stroke="none"/>
+      </svg>
+    </button>
+    <button class="topbar-btn" title="Keyboard shortcuts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2"/><line x1="6" y1="8" x2="6" y2="8"/><line x1="10" y1="8" x2="10" y2="8"/><line x1="14" y1="8" x2="14" y2="8"/><line x1="18" y1="8" x2="18" y2="8"/><line x1="6" y1="12" x2="6" y2="12"/><line x1="10" y1="12" x2="10" y2="12"/><line x1="14" y1="12" x2="14" y2="12"/><line x1="18" y1="12" x2="18" y2="12"/><line x1="8" y1="16" x2="16" y2="16"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- Main content area — populated by JS -->
+<main class="main" id="app"></main>
+
+<!-- Bottom help bar -->
+<footer class="helpbar">
+  <div class="helpbar-item"><span class="kbd">j</span><span class="kbd">k</span> <span>navigate</span></div>
+  <div class="helpbar-item"><span class="kbd">Enter</span> <span>edit</span></div>
+  <div class="helpbar-item"><span class="kbd">Tab</span> <span>indent</span></div>
+  <div class="helpbar-item"><span class="kbd">o</span> <span>new item</span></div>
+  <div class="helpbar-item"><span class="kbd">Space</span> <span>complete</span></div>
+  <div class="helpbar-item"><span class="kbd">z</span> <span>zoom in</span></div>
+  <div class="helpbar-item"><span class="kbd">?</span> <span>all shortcuts</span></div>
+</footer>
+
+<script>
+// ==========================================
+// Outline data and rendering
+// ==========================================
+
+const DATA = [
+  {
+    text: 'Authentication & User Management',
+    tag: { label: 'In Progress', cls: 'tag-wip' },
+    expanded: true,
+    children: [
+      {
+        text: 'Implement OAuth 2.0 with Google and GitHub providers',
+        kbd: null,
+        children: [
+          { text: 'Configure OAuth consent screen and credentials', done: true },
+          { text: 'Handle token refresh and session persistence' },
+          { text: 'Add PKCE flow for public clients', note: 'Required for SPA and mobile apps' }
+        ],
+        expanded: true
+      },
+      {
+        text: 'Design user profile and settings page',
+        note: 'Wireframes in Figma, linked in the wiki'
+      },
+      { text: 'Role-based access control for shared lists', kbd: null },
+      { text: 'Email verification flow', done: true }
+    ]
+  },
+  {
+    text: 'Keyboard Navigation Engine',
+    tag: { label: 'Priority', cls: 'tag-priority' },
+    expanded: true,
+    focused: true,
+    children: [
+      {
+        text: 'Vim-style motion commands',
+        kbd: 'j/k',
+        expanded: true,
+        children: [
+          { text: 'Single item up/down with <span class="kbd">j</span> <span class="kbd">k</span>' },
+          { text: 'Jump to parent with <span class="kbd">g</span><span class="kbd">u</span>' },
+          { text: 'Jump to first/last sibling with <span class="kbd">g</span><span class="kbd">g</span> and <span class="kbd">G</span>' }
+        ]
+      },
+      {
+        text: 'Expand and collapse with <span class="kbd">l</span> and <span class="kbd">h</span>',
+        note: 'Should also support recursive toggle'
+      },
+      { text: 'Multi-select with <span class="kbd">Shift</span>+<span class="kbd">j</span>/<span class="kbd">k</span>' },
+      { text: 'Quick actions palette with <span class="kbd">Ctrl</span>+<span class="kbd">k</span>' }
+    ]
+  },
+  {
+    text: 'Data Sync & Offline Support',
+    expanded: false,
+    children: [
+      { text: 'CRDT-based conflict resolution' },
+      { text: 'IndexedDB local persistence layer' },
+      { text: 'Background sync with exponential backoff' },
+      { text: 'Sync status indicator in top bar' }
+    ]
+  },
+  {
+    text: 'Performance Optimization',
+    expanded: true,
+    children: [
+      { text: 'Virtual scrolling for lists with 10k+ items', tag: { label: 'Priority', cls: 'tag-priority' } },
+      { text: 'Lazy rendering of collapsed subtrees' },
+      { text: 'Debounced saves on keystroke — 300ms threshold', done: true },
+      { text: 'Web Worker for search indexing' }
+    ]
+  },
+  {
+    text: 'Export & Integration',
+    tag: { label: 'Done', cls: 'tag-done' },
+    expanded: true,
+    children: [
+      { text: 'OPML import and export', done: true },
+      { text: 'Markdown export with indentation', done: true },
+      { text: 'REST API for third-party integrations', done: true },
+      { text: 'Webhook support for item events', done: true }
+    ]
+  },
+  {
+    text: 'Accessibility Audit',
+    expanded: false,
+    children: [
+      { text: 'ARIA tree role implementation' },
+      { text: 'Screen reader announcements for state changes' },
+      { text: 'High contrast mode' },
+      { text: 'Focus trap in modals and palettes' }
+    ]
+  }
+];
+
+function chevronSvg() {
+  return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg>';
+}
+
+function renderItem(item, depth) {
+  var hasChildren = item.children && item.children.length > 0;
+  var isExpanded = item.expanded !== false;
+  var isDone = item.done === true;
+
+  var toggleCls = 'item-toggle';
+  if (hasChildren && isExpanded) toggleCls += ' is-expanded';
+  if (!hasChildren) toggleCls += ' is-leaf';
+
+  var rowCls = 'item-row';
+  if (item.focused) rowCls += ' is-focused';
+
+  var contentCls = 'item-content';
+  if (isDone) contentCls += ' is-done';
+
+  var html = '<li class="outline-item">';
+  html += '<div class="' + rowCls + '">';
+  html += '<span class="' + toggleCls + '">' + (hasChildren ? chevronSvg() : '') + '</span>';
+  html += '<div class="' + contentCls + '">';
+  html += '<span>' + item.text + '</span>';
+
+  if (item.tag) {
+    html += '<span class="tag ' + item.tag.cls + '">' + item.tag.label + '</span>';
+  }
+  if (item.kbd) {
+    html += '<span class="kbd">' + item.kbd + '</span>';
+  }
+  if (item.note) {
+    html += '<div class="item-note">' + item.note + '</div>';
+  }
+
+  html += '</div></div>';
+
+  if (hasChildren && isExpanded) {
+    html += '<ul class="outline-children">';
+    for (var i = 0; i < item.children.length; i++) {
+      html += renderItem(item.children[i], depth + 1);
+    }
+    html += '</ul>';
+  }
+
+  html += '</li>';
+  return html;
+}
+
+function renderOutline(data) {
+  var headerHtml = '<div class="list-header">';
+  headerHtml += '<h1 class="list-title">Product Roadmap Q2</h1>';
+  headerHtml += '<div class="list-meta">';
+  headerHtml += '<span>24 items</span>';
+  headerHtml += '<span class="meta-sep"></span>';
+  headerHtml += '<span>6 completed</span>';
+  headerHtml += '<span class="meta-sep"></span>';
+  headerHtml += '<span>Updated 2 hours ago</span>';
+  headerHtml += '</div></div>';
+
+  var listHtml = '<ul class="outline" id="outline-root">';
+  for (var i = 0; i < data.length; i++) {
+    listHtml += renderItem(data[i], 0);
+  }
+  listHtml += '</ul>';
+
+  document.getElementById('app').innerHTML = headerHtml + listHtml;
+
+  // Apply staggered animation delays to top-level items
+  var topItems = document.querySelectorAll('#outline-root > .outline-item');
+  for (var j = 0; j < topItems.length; j++) {
+    topItems[j].style.animationDelay = (j * 0.04) + 's';
+  }
+}
+
+// Toggle expand/collapse on chevron click
+document.addEventListener('click', function(e) {
+  var toggle = e.target.closest('.item-toggle');
+  if (!toggle || toggle.classList.contains('is-leaf')) return;
+
+  toggle.classList.toggle('is-expanded');
+  var li = toggle.closest('.outline-item');
+  var childList = li.querySelector(':scope > .outline-children');
+  if (childList) {
+    childList.style.display = childList.style.display === 'none' ? '' : 'none';
+  }
+});
+
+// Focus simulation on row click
+document.addEventListener('click', function(e) {
+  var row = e.target.closest('.item-row');
+  if (!row) return;
+  if (e.target.closest('.item-toggle')) return;
+
+  var allRows = document.querySelectorAll('.item-row.is-focused');
+  for (var i = 0; i < allRows.length; i++) {
+    allRows[i].classList.remove('is-focused');
+  }
+  row.classList.add('is-focused');
+});
+
+// Render on load
+renderOutline(DATA);
+</script>
+</body>
+</html>

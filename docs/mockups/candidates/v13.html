@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VistaNest — Hierarchical Outliner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #0c0d0f;
+  --bg-surface: #12141a;
+  --bg-raised: #1a1d26;
+  --bg-hover: #1e2230;
+  --bg-focus: #1c2033;
+  --border-subtle: #252a38;
+  --border-dim: #1e2230;
+  --text-primary: #d4d8e4;
+  --text-secondary: #7c829a;
+  --text-tertiary: #4e5368;
+  --text-ghost: #363b50;
+  --accent: #6b8aed;
+  --accent-dim: #4a6acc;
+  --accent-ghost: rgba(107, 138, 237, 0.08);
+  --accent-glow: rgba(107, 138, 237, 0.15);
+  --badge-bg: #1a1f30;
+  --badge-text: #5a6a9e;
+  --chevron: #4e5368;
+  --chevron-active: #7c829a;
+  --done-text: #3e4358;
+  --done-line: #3e4358;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --content-width: 740px;
+  --topbar-height: 56px;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* === Noise texture overlay === */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px;
+}
+
+/* ============================================
+   TOP BAR
+   ============================================ */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-height);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-dim);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  backdrop-filter: blur(12px);
+  background: rgba(18, 20, 26, 0.92);
+}
+
+.topbar-inner {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo {
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.logo span {
+  color: var(--accent);
+}
+
+/* Breadcrumb navigation */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-left: 20px;
+  flex-shrink: 0;
+}
+
+.breadcrumb-sep {
+  color: var(--text-ghost);
+  font-size: 11px;
+  margin: 0 2px;
+}
+
+.breadcrumb-item {
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: color 0.15s;
+  white-space: nowrap;
+}
+
+.breadcrumb-item:hover {
+  color: var(--text-secondary);
+}
+
+.breadcrumb-item.current {
+  color: var(--text-secondary);
+}
+
+/* Search */
+.search-area {
+  margin-left: auto;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  min-width: 220px;
+}
+
+.search-box:hover {
+  border-color: var(--border-subtle);
+  background: var(--bg-hover);
+}
+
+.search-icon {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.search-placeholder {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  font-family: var(--font-body);
+  flex: 1;
+}
+
+.search-kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--badge-text);
+  background: var(--badge-bg);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  padding: 2px 6px;
+  letter-spacing: 0.03em;
+  line-height: 1;
+}
+
+/* Topbar actions */
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 12px;
+  flex-shrink: 0;
+}
+
+.topbar-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.topbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+/* ============================================
+   MAIN CONTENT
+   ============================================ */
+.main {
+  padding-top: calc(var(--topbar-height) + 40px);
+  padding-bottom: 120px;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+/* List title */
+.list-header {
+  margin-bottom: 36px;
+}
+
+.list-title {
+  font-size: 26px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+
+.list-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.list-meta-sep {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+}
+
+/* ============================================
+   OUTLINE ITEMS
+   ============================================ */
+.outline {
+  list-style: none;
+}
+
+.outline-item {
+  position: relative;
+}
+
+/* Vertical connector lines */
+.outline-children {
+  list-style: none;
+  padding-left: 28px;
+  position: relative;
+}
+
+.outline-children::before {
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 0;
+  bottom: 12px;
+  width: 1px;
+  background: var(--border-dim);
+}
+
+/* Item row */
+.item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 7px 8px 7px 4px;
+  border-radius: 6px;
+  cursor: default;
+  transition: background 0.12s;
+  position: relative;
+  min-height: 40px;
+}
+
+.item-row:hover {
+  background: var(--bg-hover);
+}
+
+/* Focused item */
+.item-row.focused {
+  background: var(--bg-focus);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.item-row.focused .item-text {
+  color: #e0e4f0;
+}
+
+/* Chevron toggle */
+.item-toggle {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--chevron);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.12s, transform 0.2s;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.item-toggle:hover {
+  color: var(--chevron-active);
+  background: rgba(255,255,255,0.04);
+}
+
+.item-toggle.expanded {
+  transform: rotate(90deg);
+}
+
+.item-toggle.leaf {
+  color: transparent;
+  pointer-events: none;
+}
+
+.item-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Bullet for leaf nodes */
+.item-bullet {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.item-bullet::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+  transition: background 0.15s;
+}
+
+.item-row:hover .item-bullet::after {
+  background: var(--text-tertiary);
+}
+
+/* Item text */
+.item-text {
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  flex: 1;
+  padding-top: 1px;
+}
+
+.item-text .note {
+  display: block;
+  font-size: 13.5px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+/* Done / completed items */
+.item-row.done .item-text {
+  color: var(--done-text);
+  text-decoration: line-through;
+  text-decoration-color: var(--done-line);
+}
+
+.item-row.done .item-bullet::after {
+  background: var(--done-line);
+}
+
+/* Keyboard shortcut badges */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--badge-text);
+  background: var(--badge-bg);
+  border: 1px solid var(--border-dim);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 8px;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  line-height: 1.5;
+  user-select: none;
+}
+
+/* Tags */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--accent-dim);
+  background: var(--accent-ghost);
+  border-radius: 4px;
+  padding: 1px 7px;
+  margin-left: 8px;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  line-height: 1.6;
+}
+
+.tag.orange {
+  color: #c4873a;
+  background: rgba(196, 135, 58, 0.1);
+}
+
+.tag.green {
+  color: #5a9e6b;
+  background: rgba(90, 158, 107, 0.08);
+}
+
+.tag.red {
+  color: #c45a5a;
+  background: rgba(196, 90, 90, 0.08);
+}
+
+/* Priority markers */
+.priority {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  border-radius: 3px;
+  margin-left: 8px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.priority.p1 {
+  color: #e06060;
+  background: rgba(224, 96, 96, 0.12);
+}
+
+.priority.p2 {
+  color: #c4873a;
+  background: rgba(196, 135, 58, 0.1);
+}
+
+/* Item counter for collapsed */
+.item-count {
+  font-size: 11px;
+  color: var(--text-ghost);
+  font-family: var(--font-mono);
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+/* ============================================
+   FOOTER HELP BAR
+   ============================================ */
+.help-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  background: rgba(18, 20, 26, 0.92);
+}
+
+.help-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.help-item .kbd {
+  margin-left: 0;
+  font-size: 9.5px;
+  padding: 1px 4px;
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.outline > .outline-item {
+  animation: fadeSlideIn 0.35s ease-out both;
+}
+
+.list-header {
+  animation: fadeSlideIn 0.3s ease-out both;
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-ghost);
+}
+
+/* ============================================
+   SELECTION
+   ============================================ */
+::selection {
+  background: var(--accent-glow);
+  color: var(--text-primary);
+}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<nav class="topbar">
+  <div class="topbar-inner">
+    <div class="logo">Vista<span>Nest</span></div>
+
+    <div class="breadcrumb">
+      <span class="breadcrumb-item">My Lists</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-item">Work</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-item current">Product Roadmap Q2</span>
+    </div>
+
+    <div class="search-area">
+      <div class="search-box">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span class="search-placeholder">Search items...</span>
+        <span class="search-kbd">/</span>
+      </div>
+    </div>
+
+    <div class="topbar-actions">
+      <button class="topbar-btn" title="Undo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      </button>
+      <button class="topbar-btn" title="Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main">
+  <div class="list-header">
+    <h1 class="list-title">Product Roadmap Q2</h1>
+    <div class="list-meta">
+      <span>24 items</span>
+      <span class="list-meta-sep"></span>
+      <span>8 completed</span>
+      <span class="list-meta-sep"></span>
+      <span>Updated 2h ago</span>
+    </div>
+  </div>
+
+  <ul class="outline" id="outline-root"></ul>
+</main>
+
+<!-- Help Bar -->
+<footer class="help-bar">
+  <div class="help-item"><span class="kbd">Enter</span> New item</div>
+  <div class="help-item"><span class="kbd">Tab</span> Indent</div>
+  <div class="help-item"><span class="kbd">Shift+Tab</span> Outdent</div>
+  <div class="help-item"><span class="kbd">Alt+Up/Dn</span> Move</div>
+  <div class="help-item"><span class="kbd">Space</span> Toggle done</div>
+  <div class="help-item"><span class="kbd">?</span> All shortcuts</div>
+</footer>
+
+<script>
+// Outline data
+const outlineData = [
+  {
+    text: 'Core Platform',
+    tag: { label: 'epic', color: '' },
+    expanded: true,
+    children: [
+      {
+        text: 'Implement keyboard navigation system',
+        kbd: 'In Progress',
+        tag: { label: 'P1', type: 'priority', color: 'p1' },
+        focused: true,
+        note: 'Arrow keys for traversal, Enter to edit, Escape to exit',
+        children: [
+          { text: 'Arrow key traversal between siblings', done: true },
+          { text: 'Enter to create new sibling item', done: true },
+          { text: 'Tab / Shift+Tab for indent level changes' },
+          { text: 'Escape to deselect or exit edit mode' },
+        ]
+      },
+      {
+        text: 'Hierarchical data model with unlimited nesting',
+        done: true,
+        children: []
+      },
+      {
+        text: 'Real-time collaborative editing',
+        tag: { label: 'P2', type: 'priority', color: 'p2' },
+        children: [
+          { text: 'CRDT-based conflict resolution' },
+          { text: 'Presence indicators for active users' },
+          { text: 'Cursor and selection sharing', tag: { label: 'stretch', color: 'orange' } },
+        ]
+      },
+    ]
+  },
+  {
+    text: 'Search & Navigation',
+    tag: { label: 'epic', color: '' },
+    expanded: true,
+    children: [
+      {
+        text: 'Full-text search across all lists',
+        kbd: '/',
+        children: [
+          { text: 'Fuzzy matching with ranked results' },
+          { text: 'Search within current list or globally' },
+          { text: 'Highlight matches in context', done: true },
+        ]
+      },
+      { text: 'Breadcrumb navigation with click-to-zoom', done: true },
+      {
+        text: 'Zoom into any node as root view',
+        tag: { label: 'core', color: 'green' },
+      },
+    ]
+  },
+  {
+    text: 'Import & Export',
+    expanded: false,
+    collapsed_count: 5,
+    children: []
+  },
+  {
+    text: 'User Experience Polish',
+    tag: { label: 'epic', color: '' },
+    expanded: true,
+    children: [
+      { text: 'Dark theme with accessible contrast ratios', done: true },
+      { text: 'Smooth expand/collapse animations', done: true },
+      {
+        text: 'Mobile-responsive layout',
+        tag: { label: 'deferred', color: 'red' },
+      },
+      {
+        text: 'Customizable keyboard shortcuts',
+        note: 'Allow users to remap any action to preferred key bindings',
+      },
+    ]
+  },
+];
+
+// SVG for chevron
+const chevronSVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+
+function buildTag(tag) {
+  if (!tag) return '';
+  if (tag.type === 'priority') {
+    return '<span class="priority ' + tag.color + '">' + tag.label + '</span>';
+  }
+  var cls = tag.color ? ' ' + tag.color : '';
+  return '<span class="tag' + cls + '">' + tag.label + '</span>';
+}
+
+function buildItem(item, depth) {
+  var hasChildren = item.children && item.children.length > 0;
+  var isCollapsedParent = item.collapsed_count > 0;
+  var li = document.createElement('li');
+  li.className = 'outline-item';
+  li.style.animationDelay = (depth * 0.02 + Math.random() * 0.06) + 's';
+
+  var row = document.createElement('div');
+  row.className = 'item-row';
+  if (item.focused) row.className += ' focused';
+  if (item.done) row.className += ' done';
+
+  // Toggle or bullet
+  var toggleHTML = '';
+  if (hasChildren || isCollapsedParent) {
+    var expandedCls = item.expanded ? ' expanded' : '';
+    toggleHTML = '<button class="item-toggle' + expandedCls + '">' + chevronSVG + '</button>';
+  } else {
+    toggleHTML = '<span class="item-bullet"></span>';
+  }
+
+  // Text content
+  var textHTML = item.text;
+  if (item.tag) textHTML += buildTag(item.tag);
+  if (item.kbd && !item.tag) textHTML += '<span class="kbd">' + item.kbd + '</span>';
+  if (item.kbd && item.tag) textHTML += '<span class="kbd">' + item.kbd + '</span>';
+  if (isCollapsedParent) textHTML += '<span class="item-count">' + item.collapsed_count + ' items</span>';
+  if (item.note) textHTML += '<span class="note">' + item.note + '</span>';
+
+  row.innerHTML = toggleHTML + '<span class="item-text">' + textHTML + '</span>';
+  li.appendChild(row);
+
+  // Children
+  if (hasChildren && item.expanded) {
+    var childUl = document.createElement('ul');
+    childUl.className = 'outline-children';
+    for (var i = 0; i < item.children.length; i++) {
+      childUl.appendChild(buildItem(item.children[i], depth + 1));
+    }
+    li.appendChild(childUl);
+  }
+
+  // Toggle click behavior
+  var toggleBtn = row.querySelector('.item-toggle');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
+      toggleBtn.classList.toggle('expanded');
+      var childList = li.querySelector(':scope > .outline-children');
+      if (childList) {
+        childList.style.display = childList.style.display === 'none' ? '' : 'none';
+      }
+    });
+  }
+
+  return li;
+}
+
+function renderOutline() {
+  var root = document.getElementById('outline-root');
+  for (var i = 0; i < outlineData.length; i++) {
+    root.appendChild(buildItem(outlineData[i], 0));
+  }
+}
+
+renderOutline();
+</script>
+
+</body>
+</html>

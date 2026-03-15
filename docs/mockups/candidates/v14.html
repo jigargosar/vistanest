@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VistaNest — Outliner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #0c0d10;
+  --bg-surface: #111318;
+  --bg-raised: #181a20;
+  --bg-hover: #1e2028;
+  --bg-focus: #1a1d2a;
+  --border-subtle: #222530;
+  --border-faint: #1a1c24;
+  --text-primary: #d4d7e0;
+  --text-secondary: #7a7f92;
+  --text-tertiary: #4a4e5e;
+  --text-ghost: #333648;
+  --accent: #6b8aed;
+  --accent-dim: #4a6ad0;
+  --accent-glow: rgba(107, 138, 237, 0.08);
+  --accent-glow-strong: rgba(107, 138, 237, 0.14);
+  --done: #4a5568;
+  --done-text: #555e72;
+  --tag-bg: rgba(107, 138, 237, 0.1);
+  --tag-text: #7b9af0;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --item-gap: 2px;
+  --indent: 28px;
+  --line-height: 1.65;
+  --content-width: 740px;
+  --topbar-height: 54px;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: var(--line-height);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* === NOISE TEXTURE OVERLAY === */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* === TOP BAR === */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-height);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  background: rgba(17, 19, 24, 0.92);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.logo {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.logo span {
+  color: var(--accent);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.breadcrumb-sep {
+  font-size: 10px;
+  opacity: 0.5;
+}
+
+.breadcrumb a {
+  color: var(--text-tertiary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.breadcrumb a:hover {
+  color: var(--text-secondary);
+}
+
+.breadcrumb-current {
+  color: var(--text-secondary);
+}
+
+.topbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 0 32px;
+}
+
+.search-bar {
+  position: relative;
+  width: 100%;
+  max-width: 380px;
+}
+
+.search-bar input {
+  width: 100%;
+  height: 32px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 0 12px 0 34px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-bar input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.search-bar input:focus {
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-tertiary);
+  pointer-events: none;
+}
+
+.search-kbd {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.topbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.topbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+  border-color: var(--border-subtle);
+}
+
+/* === KBD BADGES === */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-tertiary);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* === MAIN CONTENT === */
+.main {
+  margin-top: var(--topbar-height);
+  padding: 40px 24px 120px;
+  display: flex;
+  justify-content: center;
+}
+
+.content {
+  width: 100%;
+  max-width: var(--content-width);
+}
+
+/* === LIST HEADER === */
+.list-header {
+  margin-bottom: 36px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-faint);
+}
+
+.list-title {
+  font-size: 26px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.list-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.list-meta-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--border-subtle);
+}
+
+/* === OUTLINE TREE === */
+.outline {
+  list-style: none;
+}
+
+.outline .outline {
+  padding-left: var(--indent);
+}
+
+/* === OUTLINE ITEM === */
+.item {
+  position: relative;
+}
+
+.item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 5px 8px 5px 4px;
+  border-radius: 6px;
+  margin: var(--item-gap) 0;
+  transition: background 0.12s;
+  cursor: default;
+}
+
+.item-row:hover {
+  background: var(--bg-hover);
+}
+
+.item-row.focused {
+  background: var(--bg-focus);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.item-row.focused .item-text {
+  color: #e2e5ee;
+}
+
+/* Toggle chevron */
+.item-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 26px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: color 0.15s, transform 0.2s ease;
+  border-radius: 4px;
+}
+
+.item-toggle:hover {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.03);
+}
+
+.item-toggle svg {
+  transition: transform 0.2s ease;
+}
+
+.item-toggle.collapsed svg {
+  transform: rotate(-90deg);
+}
+
+.item-toggle.leaf {
+  visibility: hidden;
+}
+
+/* Item text */
+.item-text {
+  flex: 1;
+  font-size: 16px;
+  line-height: var(--line-height);
+  padding-top: 2px;
+  color: var(--text-primary);
+}
+
+.item-text.done {
+  color: var(--done-text);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-ghost);
+}
+
+/* Inline note */
+.item-note {
+  font-size: 14px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  line-height: 1.5;
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* Tags */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  margin-left: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--tag-text);
+  background: var(--tag-bg);
+  border-radius: 4px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+.tag.priority {
+  color: #e8a87c;
+  background: rgba(232, 168, 124, 0.1);
+}
+
+.tag.done-tag {
+  color: var(--done);
+  background: rgba(74, 85, 104, 0.15);
+}
+
+/* Item actions (appear on hover/focus) */
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.item-row:hover .item-actions,
+.item-row.focused .item-actions {
+  opacity: 1;
+}
+
+.item-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background: none;
+  border: none;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.item-action-btn:hover {
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+}
+
+/* Collapsed children indicator */
+.collapsed-count {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  margin-left: 8px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-ghost);
+  background: var(--bg-raised);
+  border-radius: 3px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+/* === KEYBOARD HELP FOOTER === */
+.keyboard-help {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 40px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-faint);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 0 24px;
+  z-index: 100;
+}
+
+.kb-hint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.kb-hint kbd {
+  font-size: 10px;
+}
+
+/* === SELECTION CHECKBOX (subtle) === */
+.item-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 5px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border-subtle);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.item-check:hover {
+  border-color: var(--text-tertiary);
+}
+
+.item-check.checked {
+  background: var(--accent-dim);
+  border-color: var(--accent-dim);
+}
+
+.item-check.checked svg {
+  opacity: 1;
+}
+
+.item-check svg {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+
+/* === VERTICAL GUIDE LINES === */
+.outline .outline {
+  position: relative;
+}
+
+.outline .outline::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 0;
+  bottom: 8px;
+  width: 1px;
+  background: var(--border-faint);
+}
+
+/* === ITEM COUNT BADGE === */
+.count-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-ghost);
+  margin-left: 4px;
+}
+
+/* === ANIMATIONS === */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.list-header {
+  animation: fadeInUp 0.35s ease both;
+}
+
+.outline > .item {
+  animation: fadeInUp 0.3s ease both;
+}
+
+.outline > .item:nth-child(1) { animation-delay: 0.06s; }
+.outline > .item:nth-child(2) { animation-delay: 0.10s; }
+.outline > .item:nth-child(3) { animation-delay: 0.14s; }
+.outline > .item:nth-child(4) { animation-delay: 0.18s; }
+.outline > .item:nth-child(5) { animation-delay: 0.22s; }
+.outline > .item:nth-child(6) { animation-delay: 0.26s; }
+.outline > .item:nth-child(7) { animation-delay: 0.30s; }
+.outline > .item:nth-child(8) { animation-delay: 0.34s; }
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-ghost);
+}
+
+/* === RESPONSIVE === */
+@media (max-width: 680px) {
+  .topbar-center { display: none; }
+  .breadcrumb { display: none; }
+  .content { max-width: 100%; }
+  .keyboard-help { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Vista<span>Nest</span></div>
+    <nav class="breadcrumb">
+      <span class="breadcrumb-sep">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2L6.5 5L3.5 8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <a href="#">Projects</a>
+      <span class="breadcrumb-sep">
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M3.5 2L6.5 5L3.5 8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <span class="breadcrumb-current">VistaNest Roadmap</span>
+    </nav>
+  </div>
+
+  <div class="topbar-center">
+    <div class="search-bar">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.3"/>
+        <path d="M9.5 9.5L12.5 12.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      <input type="text" placeholder="Search items...">
+      <kbd class="search-kbd">/</kbd>
+    </div>
+  </div>
+
+  <div class="topbar-right">
+    <button class="topbar-btn" title="Undo">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 6h6a3 3 0 0 1 0 6H8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.5 3.5L4 6l2.5 2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="topbar-btn" title="Settings">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.3"/><path d="M8 2v2m0 8v2m-4.24-1.76 1.41-1.41m5.66-5.66 1.41-1.41M2 8h2m8 0h2M3.76 3.76l1.41 1.41m5.66 5.66 1.41 1.41" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+    </button>
+    <button class="topbar-btn" title="Help">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.3"/><path d="M6 6.5a2 2 0 0 1 3.5 1.25c0 1.25-2 1.25-2 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><circle cx="8" cy="12" r="0.5" fill="currentColor"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+  <div class="content">
+
+    <!-- LIST HEADER -->
+    <div class="list-header">
+      <h1 class="list-title">VistaNest Roadmap</h1>
+      <div class="list-meta">
+        <span>24 items</span>
+        <div class="list-meta-divider"></div>
+        <span>6 completed</span>
+        <div class="list-meta-divider"></div>
+        <span>Updated 2 hours ago</span>
+      </div>
+    </div>
+
+    <!-- OUTLINE TREE -->
+    <ul class="outline" id="outline-root"></ul>
+
+  </div>
+</main>
+
+<!-- KEYBOARD HELP BAR -->
+<footer class="keyboard-help">
+  <div class="kb-hint"><kbd>j</kbd><kbd>k</kbd> navigate</div>
+  <div class="kb-hint"><kbd>Enter</kbd> edit</div>
+  <div class="kb-hint"><kbd>Tab</kbd> indent</div>
+  <div class="kb-hint"><kbd>Space</kbd> toggle</div>
+  <div class="kb-hint"><kbd>o</kbd> new item</div>
+  <div class="kb-hint"><kbd>x</kbd> complete</div>
+  <div class="kb-hint"><kbd>?</kbd> all shortcuts</div>
+</footer>
+
+<script>
+const OUTLINE_DATA = [
+  {
+    text: "Core Outliner Engine",
+    tags: [{ label: "in-progress", type: "default" }],
+    children: [
+      {
+        text: "Keyboard navigation (j/k, up/down)",
+        done: true,
+        children: []
+      },
+      {
+        text: "Indent and outdent with Tab / Shift+Tab",
+        done: true,
+        children: []
+      },
+      {
+        text: "Collapse and expand subtrees",
+        note: "Space to toggle, Shift+Space to toggle recursively",
+        children: [
+          { text: "Single-level toggle", done: true, children: [] },
+          { text: "Recursive expand/collapse", children: [] },
+          { text: "Persist collapsed state across sessions", children: [] }
+        ]
+      },
+      {
+        text: "Drag and drop reordering",
+        tags: [{ label: "deferred", type: "done-tag" }],
+        children: []
+      }
+    ]
+  },
+  {
+    text: "Inline Editing",
+    children: [
+      {
+        text: "Enter to start editing, Escape to cancel",
+        done: true,
+        children: []
+      },
+      {
+        text: "Markdown-lite formatting support",
+        children: [
+          { text: "Bold and italic", children: [] },
+          { text: "Inline code spans", children: [] },
+          { text: "Hyperlinks with preview on hover", children: [] }
+        ]
+      },
+      {
+        text: "Multi-line notes per item",
+        note: "Secondary text below the item headline",
+        children: []
+      }
+    ]
+  },
+  {
+    text: "Search and Filtering",
+    tags: [{ label: "priority", type: "priority" }],
+    children: [
+      {
+        text: "Fuzzy search across all items",
+        note: "Press / to focus the search bar from anywhere",
+        children: []
+      },
+      { text: "Filter by tag or completion status", children: [] },
+      { text: "Highlight matching fragments in results", children: [] }
+    ]
+  },
+  {
+    text: "Theming and Appearance",
+    collapsed: true,
+    children: [
+      { text: "Dark theme as default", done: true, children: [] },
+      { text: "Light theme variant", children: [] },
+      { text: "Custom accent color picker", children: [] },
+      { text: "Font size and spacing preferences", children: [] }
+    ]
+  },
+  {
+    text: "Data and Sync",
+    children: [
+      { text: "Local-first storage with IndexedDB", children: [] },
+      {
+        text: "Export to OPML and Markdown",
+        tags: [{ label: "v1.1", type: "default" }],
+        children: []
+      },
+      { text: "Optional cloud sync via CRDTs", children: [] }
+    ]
+  },
+  {
+    text: "Performance Goals",
+    done: true,
+    children: [
+      { text: "Render 10,000 items without jank", done: true, children: [] },
+      { text: "Sub-16ms keystroke response", done: true, children: [] }
+    ]
+  },
+  {
+    text: "Accessibility",
+    children: [
+      { text: "Full ARIA tree role implementation", children: [] },
+      { text: "Screen reader announcements for actions", children: [] },
+      { text: "High contrast mode support", children: [] }
+    ]
+  },
+  {
+    text: "Documentation and Onboarding",
+    children: [
+      { text: "Interactive keyboard shortcut tutorial", children: [] },
+      { text: "Built-in cheatsheet overlay", children: [] }
+    ]
+  }
+];
+
+const chevronSVG = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3.5L8.5 7L5 10.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+const checkSVG = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 6.5L5 8.5L9 3.5" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+const moreSVG = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="3" cy="7" r="1" fill="currentColor"/><circle cx="7" cy="7" r="1" fill="currentColor"/><circle cx="11" cy="7" r="1" fill="currentColor"/></svg>';
+
+let focusedIndex = 2;
+let visibleItems = [];
+
+function countDescendants(item) {
+  let count = 0;
+  for (const child of item.children) {
+    count += 1 + countDescendants(child);
+  }
+  return count;
+}
+
+function renderItem(item, depth) {
+  const li = document.createElement('li');
+  li.className = 'item';
+  li.dataset.depth = depth;
+
+  const row = document.createElement('div');
+  row.className = 'item-row';
+
+  const itemIndex = visibleItems.length;
+  visibleItems.push({ element: row, item: item });
+
+  if (itemIndex === focusedIndex) {
+    row.classList.add('focused');
+  }
+
+  // Toggle chevron
+  const toggle = document.createElement('div');
+  toggle.className = 'item-toggle';
+  const hasChildren = item.children && item.children.length > 0;
+
+  if (hasChildren) {
+    if (item.collapsed) {
+      toggle.classList.add('collapsed');
+    }
+    toggle.innerHTML = chevronSVG;
+    toggle.addEventListener('click', function() {
+      item.collapsed = !item.collapsed;
+      rebuildTree();
+    });
+  } else {
+    toggle.classList.add('leaf');
+    toggle.innerHTML = chevronSVG;
+  }
+
+  row.appendChild(toggle);
+
+  // Checkbox
+  const check = document.createElement('div');
+  check.className = 'item-check';
+  if (item.done) {
+    check.classList.add('checked');
+  }
+  check.innerHTML = checkSVG;
+  check.addEventListener('click', function() {
+    item.done = !item.done;
+    rebuildTree();
+  });
+  row.appendChild(check);
+
+  // Text content
+  const textWrap = document.createElement('div');
+  textWrap.style.flex = '1';
+  textWrap.style.minWidth = '0';
+
+  const textEl = document.createElement('div');
+  textEl.className = 'item-text';
+  if (item.done) {
+    textEl.classList.add('done');
+  }
+
+  let textHTML = item.text;
+
+  // Tags
+  if (item.tags) {
+    for (const tag of item.tags) {
+      textHTML += '<span class="tag ' + (tag.type || '') + '">' + tag.label + '</span>';
+    }
+  }
+
+  // Collapsed count
+  if (item.collapsed && hasChildren) {
+    const desc = countDescendants(item);
+    textHTML += '<span class="collapsed-count">' + desc + ' hidden</span>';
+  }
+
+  textEl.innerHTML = textHTML;
+  textWrap.appendChild(textEl);
+
+  // Note
+  if (item.note && !item.collapsed) {
+    const noteEl = document.createElement('div');
+    noteEl.className = 'item-note';
+    noteEl.textContent = item.note;
+    textWrap.appendChild(noteEl);
+  }
+
+  row.appendChild(textWrap);
+
+  // Actions
+  const actions = document.createElement('div');
+  actions.className = 'item-actions';
+  const moreBtn = document.createElement('button');
+  moreBtn.className = 'item-action-btn';
+  moreBtn.innerHTML = moreSVG;
+  actions.appendChild(moreBtn);
+  row.appendChild(actions);
+
+  li.appendChild(row);
+
+  // Children
+  if (hasChildren && !item.collapsed) {
+    const childList = document.createElement('ul');
+    childList.className = 'outline';
+    for (const child of item.children) {
+      childList.appendChild(renderItem(child, depth + 1));
+    }
+    li.appendChild(childList);
+  }
+
+  return li;
+}
+
+function rebuildTree() {
+  const root = document.getElementById('outline-root');
+  root.innerHTML = '';
+  visibleItems = [];
+
+  for (const item of OUTLINE_DATA) {
+    root.appendChild(renderItem(item, 0));
+  }
+
+  if (focusedIndex >= visibleItems.length) {
+    focusedIndex = visibleItems.length - 1;
+  }
+  if (focusedIndex < 0) focusedIndex = 0;
+
+  updateFocus();
+}
+
+function updateFocus() {
+  for (let i = 0; i < visibleItems.length; i++) {
+    const el = visibleItems[i].element;
+    if (i === focusedIndex) {
+      el.classList.add('focused');
+    } else {
+      el.classList.remove('focused');
+    }
+  }
+}
+
+function moveFocus(delta) {
+  const newIndex = focusedIndex + delta;
+  if (newIndex >= 0 && newIndex < visibleItems.length) {
+    focusedIndex = newIndex;
+    updateFocus();
+    visibleItems[focusedIndex].element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+}
+
+// Keyboard controls
+document.addEventListener('keydown', function(e) {
+  // Don't capture when search is focused
+  if (document.activeElement.tagName === 'INPUT') {
+    if (e.key === 'Escape') {
+      document.activeElement.blur();
+      e.preventDefault();
+    }
+    return;
+  }
+
+  switch (e.key) {
+    case 'j':
+    case 'ArrowDown':
+      e.preventDefault();
+      moveFocus(1);
+      break;
+    case 'k':
+    case 'ArrowUp':
+      e.preventDefault();
+      moveFocus(-1);
+      break;
+    case ' ':
+      e.preventDefault();
+      if (visibleItems[focusedIndex]) {
+        const item = visibleItems[focusedIndex].item;
+        if (item.children && item.children.length > 0) {
+          item.collapsed = !item.collapsed;
+          rebuildTree();
+        }
+      }
+      break;
+    case 'x':
+      e.preventDefault();
+      if (visibleItems[focusedIndex]) {
+        const item = visibleItems[focusedIndex].item;
+        item.done = !item.done;
+        rebuildTree();
+      }
+      break;
+    case '/':
+      e.preventDefault();
+      document.querySelector('.search-bar input').focus();
+      break;
+    case '?':
+      e.preventDefault();
+      break;
+  }
+});
+
+// Initialize
+rebuildTree();
+</script>
+
+</body>
+</html>

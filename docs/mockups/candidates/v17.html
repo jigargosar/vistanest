@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VistaNest — Hierarchical Outliner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root {
+  --bg-deep: #0c0c0e;
+  --bg-surface: #111114;
+  --bg-raised: #18181c;
+  --bg-hover: #1e1e24;
+  --bg-focus: #1a1d26;
+  --border-subtle: #222228;
+  --border-dim: #2a2a32;
+  --text-primary: #d8d8de;
+  --text-secondary: #8888a0;
+  --text-tertiary: #555568;
+  --text-ghost: #3a3a4a;
+  --accent: #5b8af0;
+  --accent-dim: #3a5ca0;
+  --accent-glow: rgba(91, 138, 240, 0.08);
+  --accent-border: rgba(91, 138, 240, 0.18);
+  --done-text: #4a4a5a;
+  --done-line: #3a3a48;
+  --kbd-bg: #1a1a22;
+  --kbd-border: #2e2e3a;
+  --kbd-text: #6a6a80;
+  --red-soft: #c0544f;
+  --green-soft: #5a9e6f;
+  --yellow-soft: #b89840;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --content-width: 720px;
+  --topbar-h: 52px;
+}
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* === TOPBAR === */
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--topbar-h);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 100;
+  gap: 16px;
+}
+
+.topbar-logo {
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  user-select: none;
+}
+.topbar-logo span {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+.breadcrumb a {
+  color: var(--text-tertiary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.breadcrumb a:hover { color: var(--text-secondary); }
+.breadcrumb .sep { opacity: 0.4; font-size: 11px; }
+.breadcrumb .current { color: var(--text-secondary); }
+
+.topbar-spacer { flex: 1; }
+
+.search-box {
+  position: relative;
+  width: 260px;
+  flex-shrink: 0;
+}
+.search-box input {
+  width: 100%;
+  height: 32px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 0 12px 0 32px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.search-box input::placeholder { color: var(--text-tertiary); }
+.search-box input:focus {
+  border-color: var(--accent-border);
+  background: var(--bg-focus);
+}
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  color: var(--text-tertiary);
+}
+.search-kbd {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.topbar-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.topbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+.topbar-btn svg { width: 16px; height: 16px; }
+
+/* === KBD BADGES === */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--kbd-text);
+  line-height: 1;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* === MAIN CONTENT === */
+.main {
+  margin-top: var(--topbar-h);
+  padding: 40px 24px 120px;
+}
+
+.content {
+  max-width: var(--content-width);
+  margin: 0 auto;
+}
+
+/* === LIST HEADER === */
+.list-header {
+  margin-bottom: 36px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.list-title {
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+.list-meta {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.list-meta .tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* === OUTLINE ITEMS === */
+.outline {
+  list-style: none;
+}
+
+.outline-item {
+  position: relative;
+}
+
+.item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 7px 8px 7px 0;
+  border-radius: 6px;
+  cursor: default;
+  transition: background 0.1s;
+  position: relative;
+}
+.item-row:hover {
+  background: var(--bg-hover);
+}
+.item-row.focused {
+  background: var(--bg-focus);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* Chevron toggle */
+.toggle {
+  width: 24px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: color 0.12s, transform 0.15s;
+  border: none;
+  background: none;
+  padding: 0;
+  border-radius: 4px;
+}
+.toggle:hover { color: var(--text-secondary); background: var(--bg-raised); }
+.toggle svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.18s ease;
+}
+.toggle.collapsed svg { transform: rotate(-90deg); }
+.toggle.leaf { visibility: hidden; }
+
+/* Item text */
+.item-text {
+  flex: 1;
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--text-primary);
+  letter-spacing: -0.008em;
+  min-height: 28px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.item-text .note {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-weight: 300;
+  font-style: italic;
+}
+
+/* Done state */
+.item-row.done .item-text {
+  color: var(--done-text);
+  text-decoration: line-through;
+  text-decoration-color: var(--done-line);
+}
+
+/* Inline tags */
+.inline-tag {
+  font-size: 11.5px;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  padding: 1px 7px;
+  border-radius: 3px;
+  letter-spacing: 0;
+  white-space: nowrap;
+  vertical-align: baseline;
+}
+.inline-tag.priority {
+  background: rgba(192, 84, 79, 0.12);
+  color: var(--red-soft);
+  border: 1px solid rgba(192, 84, 79, 0.2);
+}
+.inline-tag.progress {
+  background: rgba(90, 158, 111, 0.1);
+  color: var(--green-soft);
+  border: 1px solid rgba(90, 158, 111, 0.18);
+}
+.inline-tag.due {
+  background: rgba(184, 152, 64, 0.1);
+  color: var(--yellow-soft);
+  border: 1px solid rgba(184, 152, 64, 0.18);
+}
+.inline-tag.label {
+  background: rgba(91, 138, 240, 0.08);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+}
+
+/* Shortcut hint on focused row */
+.shortcut-hints {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 12px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.item-row.focused .shortcut-hints,
+.item-row:hover .shortcut-hints {
+  opacity: 1;
+}
+
+/* Item count badge */
+.child-count {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text-ghost);
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+/* Nesting */
+.children {
+  list-style: none;
+  padding-left: 28px;
+  position: relative;
+}
+.children::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 0;
+  bottom: 8px;
+  width: 1px;
+  background: var(--border-subtle);
+}
+.children.collapsed { display: none; }
+
+/* === FOOTER BAR === */
+.footer-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 0 24px;
+  font-size: 12px;
+  color: var(--text-ghost);
+  z-index: 100;
+}
+.footer-bar .hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.footer-bar kbd {
+  height: 18px;
+  min-width: 18px;
+  font-size: 10px;
+  padding: 0 4px;
+}
+.footer-bar .sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border-subtle);
+}
+
+/* === COMMAND PALETTE OVERLAY (decorative) === */
+.palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 200;
+  display: none;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 120px;
+  backdrop-filter: blur(4px);
+}
+.palette-overlay.visible { display: flex; }
+
+.palette {
+  width: 520px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03);
+  overflow: hidden;
+  animation: paletteIn 0.15s ease-out;
+}
+@keyframes paletteIn {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.palette-input-wrap {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.palette-input-wrap input {
+  width: 100%;
+  background: none;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--text-primary);
+  outline: none;
+}
+.palette-input-wrap input::placeholder { color: var(--text-tertiary); }
+
+.palette-results {
+  padding: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.08s;
+}
+.palette-item:hover, .palette-item.active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.palette-item .p-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+.palette-item .p-shortcut {
+  margin-left: auto;
+}
+
+/* === SUBTLE GRAIN OVERLAY === */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  z-index: 9999;
+}
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-dim);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--text-ghost); }
+
+/* === ANIMATIONS === */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.outline > .outline-item { animation: fadeInUp 0.3s ease-out both; }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-logo"><span>Vista</span>Nest</div>
+  <nav class="breadcrumb">
+    <span class="sep">/</span>
+    <a href="#">Lists</a>
+    <span class="sep">/</span>
+    <span class="current">Product Roadmap Q1</span>
+  </nav>
+  <div class="topbar-spacer"></div>
+  <div class="search-box">
+    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" placeholder="Search items..." id="searchInput">
+    <kbd class="search-kbd">/</kbd>
+  </div>
+  <div class="topbar-actions">
+    <button class="topbar-btn" title="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h13a4 4 0 0 1 0 8H7"/><path d="m3 10 4-4"/><path d="m3 10 4 4"/></svg></button>
+    <button class="topbar-btn" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.32 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+  </div>
+</header>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+  <div class="content">
+    <div class="list-header">
+      <h1 class="list-title">Product Roadmap Q1</h1>
+      <div class="list-meta">
+        <span class="tag">24 items</span>
+        <span class="tag">6 completed</span>
+        <span class="tag">Updated 2h ago</span>
+      </div>
+    </div>
+
+    <ul class="outline" id="outline"></ul>
+  </div>
+</main>
+
+<!-- FOOTER -->
+<footer class="footer-bar">
+  <div class="hint"><kbd>J</kbd><kbd>K</kbd> navigate</div>
+  <div class="sep"></div>
+  <div class="hint"><kbd>Enter</kbd> edit</div>
+  <div class="sep"></div>
+  <div class="hint"><kbd>Tab</kbd> indent</div>
+  <div class="sep"></div>
+  <div class="hint"><kbd>Space</kbd> toggle</div>
+  <div class="sep"></div>
+  <div class="hint"><kbd>Ctrl+K</kbd> command palette</div>
+</footer>
+
+<!-- COMMAND PALETTE -->
+<div class="palette-overlay" id="paletteOverlay">
+  <div class="palette">
+    <div class="palette-input-wrap">
+      <input type="text" placeholder="Type a command..." id="paletteInput" autofocus>
+    </div>
+    <div class="palette-results" id="paletteResults"></div>
+  </div>
+</div>
+
+<script>
+// === DATA ===
+const outlineData = [
+  {
+    text: "Authentication & User Management",
+    tags: [{ label: "!1", type: "priority" }, { label: "in progress", type: "progress" }],
+    focused: false,
+    done: false,
+    collapsed: false,
+    children: [
+      { text: "OAuth2 integration with Google & GitHub", done: true, children: [] },
+      { text: "Session management and token refresh", done: true, children: [] },
+      {
+        text: "Role-based access control",
+        tags: [{ label: "backend", type: "label" }],
+        focused: true,
+        children: [
+          { text: "Define permission matrix for admin, editor, viewer", done: false, children: [] },
+          { text: "Middleware guards for API routes", done: false, children: [] },
+          { text: "UI permission checks in components", done: false, children: [] },
+        ]
+      },
+      { text: "Password reset flow", done: false, note: "blocked on email service", children: [] },
+    ]
+  },
+  {
+    text: "Core Editor Experience",
+    tags: [{ label: "!1", type: "priority" }],
+    collapsed: false,
+    children: [
+      {
+        text: "Keyboard navigation system",
+        tags: [{ label: "in progress", type: "progress" }],
+        children: [
+          { text: "J/K movement between siblings", done: true, children: [] },
+          { text: "Tab/Shift+Tab for indent/outdent", done: false, children: [] },
+          { text: "Ctrl+Up/Down to move items", done: false, children: [] },
+        ]
+      },
+      { text: "Inline editing with markdown support", done: false, children: [] },
+      { text: "Drag-and-drop reordering", done: false, tags: [{ label: "Mar 20", type: "due" }], children: [] },
+      { text: "Multi-select with Shift+Click", done: false, children: [] },
+    ]
+  },
+  {
+    text: "Search & Filtering",
+    collapsed: true,
+    children: [
+      { text: "Full-text search across all lists", done: false, children: [] },
+      { text: "Tag-based filtering", done: false, children: [] },
+      { text: "Saved search queries", done: false, children: [] },
+    ]
+  },
+  {
+    text: "Data & Sync",
+    tags: [{ label: "!2", type: "priority" }],
+    collapsed: false,
+    children: [
+      { text: "Real-time collaboration via WebSocket", done: false, tags: [{ label: "Apr 1", type: "due" }], children: [] },
+      { text: "Offline mode with service worker", done: false, children: [] },
+      { text: "Import from Checkvist, WorkFlowy, OPML", done: true, children: [] },
+      { text: "Export to Markdown, JSON, OPML", done: true, children: [] },
+    ]
+  },
+  {
+    text: "Polish & Launch Prep",
+    done: false,
+    collapsed: false,
+    children: [
+      { text: "Onboarding tutorial overlay", done: false, children: [] },
+      { text: "Keyboard shortcut cheat sheet modal", done: true, children: [] },
+      { text: "Performance audit — target <100ms interactions", done: false, tags: [{ label: "perf", type: "label" }], children: [] },
+    ]
+  },
+];
+
+const paletteCommands = [
+  { icon: "plus", label: "New item", shortcut: "O" },
+  { icon: "check", label: "Toggle complete", shortcut: "Space" },
+  { icon: "indent", label: "Indent item", shortcut: "Tab" },
+  { icon: "outdent", label: "Outdent item", shortcut: "Shift+Tab" },
+  { icon: "up", label: "Move item up", shortcut: "Ctrl+\u2191" },
+  { icon: "down", label: "Move item down", shortcut: "Ctrl+\u2193" },
+  { icon: "collapse", label: "Collapse all", shortcut: "Ctrl+Shift+C" },
+  { icon: "expand", label: "Expand all", shortcut: "Ctrl+Shift+E" },
+  { icon: "trash", label: "Delete item", shortcut: "Ctrl+Del" },
+  { icon: "copy", label: "Duplicate item", shortcut: "Ctrl+D" },
+];
+
+// === CHEVRON SVG ===
+const chevronSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+
+// === RENDER OUTLINE ===
+function renderItem(item, depth, index) {
+  var li = document.createElement("li");
+  li.className = "outline-item";
+  li.style.animationDelay = (index * 0.04) + "s";
+
+  var row = document.createElement("div");
+  row.className = "item-row";
+  if (item.focused) row.classList.add("focused");
+  if (item.done) row.classList.add("done");
+
+  // Toggle button
+  var toggle = document.createElement("button");
+  toggle.className = "toggle";
+  if (item.children && item.children.length > 0) {
+    if (item.collapsed) toggle.classList.add("collapsed");
+    toggle.innerHTML = chevronSVG;
+  } else {
+    toggle.classList.add("leaf");
+    toggle.innerHTML = chevronSVG;
+  }
+  row.appendChild(toggle);
+
+  // Text
+  var textSpan = document.createElement("span");
+  textSpan.className = "item-text";
+  textSpan.textContent = item.text;
+
+  // Note
+  if (item.note) {
+    var noteEl = document.createElement("span");
+    noteEl.className = "note";
+    noteEl.textContent = "\u2014 " + item.note;
+    textSpan.appendChild(noteEl);
+  }
+
+  // Tags
+  if (item.tags) {
+    for (var t = 0; t < item.tags.length; t++) {
+      var tag = document.createElement("span");
+      tag.className = "inline-tag " + item.tags[t].type;
+      tag.textContent = item.tags[t].label;
+      textSpan.appendChild(tag);
+    }
+  }
+
+  row.appendChild(textSpan);
+
+  // Child count for collapsed
+  if (item.collapsed && item.children && item.children.length > 0) {
+    var countEl = document.createElement("span");
+    countEl.className = "child-count";
+    countEl.textContent = item.children.length + " items";
+    row.appendChild(countEl);
+  }
+
+  // Shortcut hints on focused
+  if (item.focused) {
+    var hints = document.createElement("span");
+    hints.className = "shortcut-hints";
+    var keys = ["Enter", "Space", "Tab"];
+    for (var k = 0; k < keys.length; k++) {
+      var kbd = document.createElement("kbd");
+      kbd.textContent = keys[k];
+      hints.appendChild(kbd);
+    }
+    row.appendChild(hints);
+  }
+
+  li.appendChild(row);
+
+  // Children
+  if (item.children && item.children.length > 0) {
+    var childUl = document.createElement("ul");
+    childUl.className = "children";
+    if (item.collapsed) childUl.classList.add("collapsed");
+    for (var c = 0; c < item.children.length; c++) {
+      childUl.appendChild(renderItem(item.children[c], depth + 1, c));
+    }
+    li.appendChild(childUl);
+
+    // Toggle click
+    toggle.addEventListener("click", (function(tgl, cul, itm) {
+      return function() {
+        itm.collapsed = !itm.collapsed;
+        tgl.classList.toggle("collapsed");
+        cul.classList.toggle("collapsed");
+      };
+    })(toggle, childUl, item));
+  }
+
+  return li;
+}
+
+function renderOutline() {
+  var container = document.getElementById("outline");
+  container.innerHTML = "";
+  for (var i = 0; i < outlineData.length; i++) {
+    container.appendChild(renderItem(outlineData[i], 0, i));
+  }
+}
+
+// === COMMAND PALETTE ===
+function renderPalette(filter) {
+  var results = document.getElementById("paletteResults");
+  results.innerHTML = "";
+  var lower = (filter || "").toLowerCase();
+  var matched = paletteCommands.filter(function(c) {
+    return !lower || c.label.toLowerCase().indexOf(lower) !== -1;
+  });
+  for (var i = 0; i < matched.length; i++) {
+    var cmd = matched[i];
+    var div = document.createElement("div");
+    div.className = "palette-item";
+    if (i === 0) div.classList.add("active");
+
+    var iconSvg = document.createElement("span");
+    iconSvg.className = "p-icon";
+    iconSvg.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/></svg>';
+    div.appendChild(iconSvg);
+
+    var label = document.createElement("span");
+    label.textContent = cmd.label;
+    div.appendChild(label);
+
+    var shortcut = document.createElement("kbd");
+    shortcut.className = "p-shortcut";
+    shortcut.textContent = cmd.shortcut;
+    div.appendChild(shortcut);
+
+    results.appendChild(div);
+  }
+}
+
+// === KEYBOARD HANDLING ===
+document.addEventListener("keydown", function(e) {
+  var overlay = document.getElementById("paletteOverlay");
+  var isOpen = overlay.classList.contains("visible");
+
+  // Ctrl+K — toggle palette
+  if (e.ctrlKey && e.key === "k") {
+    e.preventDefault();
+    if (isOpen) {
+      overlay.classList.remove("visible");
+    } else {
+      overlay.classList.add("visible");
+      document.getElementById("paletteInput").value = "";
+      document.getElementById("paletteInput").focus();
+      renderPalette("");
+    }
+    return;
+  }
+
+  // Escape — close palette
+  if (e.key === "Escape" && isOpen) {
+    overlay.classList.remove("visible");
+    return;
+  }
+
+  // / — focus search
+  if (e.key === "/" && !isOpen && document.activeElement.tagName !== "INPUT") {
+    e.preventDefault();
+    document.getElementById("searchInput").focus();
+    return;
+  }
+
+  // J/K navigation
+  if (!isOpen && document.activeElement.tagName !== "INPUT") {
+    if (e.key === "j" || e.key === "k") {
+      e.preventDefault();
+      var rows = document.querySelectorAll(".item-row");
+      var currentIdx = -1;
+      for (var r = 0; r < rows.length; r++) {
+        if (rows[r].classList.contains("focused")) {
+          currentIdx = r;
+          break;
+        }
+      }
+      var nextIdx = currentIdx;
+      if (e.key === "j") nextIdx = Math.min(currentIdx + 1, rows.length - 1);
+      if (e.key === "k") nextIdx = Math.max(currentIdx - 1, 0);
+
+      if (currentIdx >= 0) rows[currentIdx].classList.remove("focused");
+      rows[nextIdx].classList.add("focused");
+      rows[nextIdx].scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }
+});
+
+// Palette input filtering
+document.getElementById("paletteInput").addEventListener("input", function(e) {
+  renderPalette(e.target.value);
+});
+
+// Click outside palette to close
+document.getElementById("paletteOverlay").addEventListener("click", function(e) {
+  if (e.target === this) {
+    this.classList.remove("visible");
+  }
+});
+
+// === INIT ===
+renderOutline();
+</script>
+
+</body>
+</html>

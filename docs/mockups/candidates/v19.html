@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VistaNest — Hierarchical Outliner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,500;1,8..60,300;1,8..60,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #0e0f11;
+  --bg-surface: #141518;
+  --bg-elevated: #1a1b1f;
+  --bg-hover: #1f2024;
+  --bg-focus: rgba(209, 185, 137, 0.04);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-muted: rgba(255, 255, 255, 0.08);
+  --text-primary: #d8d4ce;
+  --text-secondary: #8a8680;
+  --text-muted: #5a5650;
+  --text-faint: #3a3832;
+  --accent: #d1b989;
+  --accent-dim: rgba(209, 185, 137, 0.15);
+  --accent-glow: rgba(209, 185, 137, 0.06);
+  --done-text: #4a4842;
+  --done-line: rgba(255, 255, 255, 0.08);
+  --kbd-bg: rgba(255, 255, 255, 0.06);
+  --kbd-border: rgba(255, 255, 255, 0.1);
+  --red-soft: #c47a6e;
+  --green-soft: #8bb87a;
+  --blue-soft: #7a9ec4;
+  --font-body: 'DM Sans', sans-serif;
+  --font-display: 'Source Serif 4', Georgia, serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --content-width: 720px;
+  --topbar-h: 52px;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  line-height: 1.65;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ===== Noise texture overlay ===== */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.018;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* ===== Top bar ===== */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-h);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  background: rgba(20, 21, 24, 0.92);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  user-select: none;
+}
+
+.logo span {
+  color: var(--accent);
+  font-weight: 300;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.breadcrumb-sep {
+  font-size: 10px;
+  color: var(--text-faint);
+  margin: 0 2px;
+}
+
+.breadcrumb a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.breadcrumb a:hover { color: var(--text-primary); }
+
+.breadcrumb-current {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.topbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 0 32px;
+}
+
+.search-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 6px 14px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: var(--font-body);
+  cursor: pointer;
+  min-width: 260px;
+  transition: all 0.2s;
+}
+
+.search-trigger:hover {
+  border-color: var(--border-muted);
+  color: var(--text-secondary);
+}
+
+.search-trigger svg {
+  width: 14px;
+  height: 14px;
+  opacity: 0.4;
+}
+
+.search-trigger .search-hint {
+  margin-left: auto;
+  display: flex;
+  gap: 3px;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.topbar-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+}
+
+.topbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.topbar-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ===== Kbd badges ===== */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-radius: 4px;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.3);
+}
+
+kbd.accent-kbd {
+  border-color: rgba(209, 185, 137, 0.2);
+  color: var(--accent);
+  background: rgba(209, 185, 137, 0.06);
+}
+
+/* ===== Main content ===== */
+main {
+  padding-top: calc(var(--topbar-h) + 32px);
+  padding-bottom: 120px;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding-left: 24px;
+  padding-right: 24px;
+}
+
+/* ===== List header ===== */
+.list-header {
+  margin-bottom: 40px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.list-title {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--text-primary);
+  letter-spacing: -0.025em;
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+
+.list-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.list-meta-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+
+/* ===== Outline items ===== */
+.outline {
+  list-style: none;
+}
+
+.outline-item {
+  position: relative;
+}
+
+.item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 7px 8px 7px 0;
+  border-radius: 6px;
+  transition: background 0.12s;
+  cursor: default;
+  position: relative;
+}
+
+.item-row:hover {
+  background: var(--bg-hover);
+}
+
+.item-row.focused {
+  background: var(--bg-focus);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.item-row.focused .item-text {
+  color: #e8e4de;
+}
+
+/* Chevron toggle */
+.item-toggle {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-faint);
+  transition: all 0.2s;
+  border-radius: 4px;
+  margin-top: 1px;
+}
+
+.item-toggle:hover {
+  color: var(--text-secondary);
+  background: rgba(255,255,255,0.04);
+}
+
+.item-toggle svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.item-toggle.expanded svg {
+  transform: rotate(90deg);
+}
+
+.item-toggle.leaf {
+  visibility: hidden;
+}
+
+/* Checkbox area */
+.item-checkbox {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.checkbox-icon {
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  border: 1.5px solid var(--text-faint);
+  transition: all 0.15s;
+  position: relative;
+}
+
+.item-checkbox:hover .checkbox-icon {
+  border-color: var(--text-muted);
+}
+
+.checkbox-icon.checked {
+  border-color: var(--green-soft);
+  background: rgba(139, 184, 122, 0.15);
+}
+
+.checkbox-icon.checked::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  width: 4px;
+  height: 7px;
+  border: solid var(--green-soft);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+/* Item text */
+.item-text {
+  flex: 1;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--text-primary);
+  padding-top: 2px;
+  font-weight: 400;
+}
+
+.item-text.done {
+  color: var(--done-text);
+  text-decoration: line-through;
+  text-decoration-color: var(--done-line);
+}
+
+.item-note {
+  font-size: 14px;
+  color: var(--text-secondary);
+  font-style: italic;
+  font-family: var(--font-display);
+  font-weight: 300;
+  margin-top: 2px;
+  line-height: 1.5;
+}
+
+/* Tags */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 3px;
+  margin-left: 8px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+.tag-priority {
+  background: rgba(196, 122, 110, 0.12);
+  color: var(--red-soft);
+  border: 1px solid rgba(196, 122, 110, 0.15);
+}
+
+.tag-context {
+  background: rgba(122, 158, 196, 0.1);
+  color: var(--blue-soft);
+  border: 1px solid rgba(122, 158, 196, 0.12);
+}
+
+.tag-done {
+  background: rgba(139, 184, 122, 0.1);
+  color: var(--green-soft);
+  border: 1px solid rgba(139, 184, 122, 0.12);
+}
+
+/* Item shortcut badge — shown on focused row */
+.item-kbd {
+  flex-shrink: 0;
+  display: none;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  margin-right: 4px;
+}
+
+.item-row.focused .item-kbd,
+.item-row:hover .item-kbd {
+  display: flex;
+}
+
+/* Children indentation */
+.children {
+  list-style: none;
+  padding-left: 28px;
+  position: relative;
+}
+
+.children::before {
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 0;
+  bottom: 8px;
+  width: 1px;
+  background: var(--border-subtle);
+}
+
+/* Collapsed children */
+.children.collapsed {
+  display: none;
+}
+
+/* ===== Item count badge ===== */
+.child-count {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-family: var(--font-mono);
+  margin-left: 6px;
+  font-weight: 400;
+}
+
+/* ===== Bottom help bar ===== */
+.help-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(14, 15, 17, 0.95);
+  border-top: 1px solid var(--border-subtle);
+  backdrop-filter: blur(12px);
+  padding: 10px 24px;
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  z-index: 100;
+}
+
+.help-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.help-item kbd {
+  font-size: 9px;
+  height: 18px;
+  min-width: 18px;
+}
+
+/* ===== Animations ===== */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.outline > .outline-item {
+  animation: fadeInUp 0.35s ease both;
+}
+
+.outline > .outline-item:nth-child(1) { animation-delay: 0.04s; }
+.outline > .outline-item:nth-child(2) { animation-delay: 0.08s; }
+.outline > .outline-item:nth-child(3) { animation-delay: 0.12s; }
+.outline > .outline-item:nth-child(4) { animation-delay: 0.16s; }
+.outline > .outline-item:nth-child(5) { animation-delay: 0.20s; }
+.outline > .outline-item:nth-child(6) { animation-delay: 0.24s; }
+.outline > .outline-item:nth-child(7) { animation-delay: 0.28s; }
+.outline > .outline-item:nth-child(8) { animation-delay: 0.32s; }
+
+/* ===== Focus mode ring (cursor blink) ===== */
+@keyframes cursorPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.item-row.focused::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 60%;
+  border-radius: 1px;
+}
+
+/* ===== Scrollbar ===== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.08);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+
+/* ===== Selection ===== */
+::selection {
+  background: rgba(209, 185, 137, 0.2);
+  color: var(--text-primary);
+}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="logo">Vista<span>Nest</span></div>
+    <nav class="breadcrumb">
+      <span class="breadcrumb-sep">/</span>
+      <a href="#">Work</a>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">Q1 Product Launch</span>
+    </nav>
+  </div>
+
+  <div class="topbar-center">
+    <button class="search-trigger">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      Search or jump to...
+      <span class="search-hint"><kbd>/</kbd></span>
+    </button>
+  </div>
+
+  <div class="topbar-right">
+    <button class="topbar-btn" title="Undo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+    </button>
+    <button class="topbar-btn" title="View options">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+    </button>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<!-- Bottom help bar -->
+<footer class="help-bar" id="helpBar"></footer>
+
+<script>
+const OUTLINE_DATA = [
+  {
+    text: 'Pre-launch checklist',
+    note: 'Everything that needs to happen before we flip the switch',
+    expanded: true,
+    children: [
+      {
+        text: 'Finalize landing page copy',
+        tags: [{ label: 'urgent', type: 'priority' }],
+        done: false,
+        children: [
+          { text: 'Write hero headline variants', done: true, children: [] },
+          { text: 'Draft pricing section copy', done: false, children: [] },
+          { text: 'Get legal review on terms', tags: [{ label: 'blocked', type: 'priority' }], done: false, children: [] }
+        ]
+      },
+      {
+        text: 'Set up analytics and tracking',
+        tags: [{ label: 'dev', type: 'context' }],
+        done: false,
+        children: [
+          { text: 'Install PostHog snippet', done: true, children: [] },
+          { text: 'Configure conversion funnels', done: false, children: [] },
+          { text: 'Set up error monitoring with Sentry', done: true, children: [] }
+        ]
+      },
+      {
+        text: 'QA pass on onboarding flow',
+        done: false,
+        children: [
+          { text: 'Test email verification loop', done: false, children: [] },
+          { text: 'Verify OAuth providers', done: false, children: [] }
+        ]
+      }
+    ]
+  },
+  {
+    text: 'Marketing & launch plan',
+    expanded: true,
+    children: [
+      {
+        text: 'Prepare launch day communications',
+        done: false,
+        children: [
+          { text: 'Draft Product Hunt listing', done: true, children: [] },
+          { text: 'Write announcement email for waitlist', done: false, children: [] },
+          { text: 'Prepare social media threads', tags: [{ label: 'content', type: 'context' }], done: false, children: [] }
+        ]
+      },
+      {
+        text: 'Line up early testimonials',
+        note: 'Reach out to beta users who gave positive feedback',
+        tags: [{ label: 'important', type: 'priority' }],
+        done: false,
+        children: []
+      },
+      { text: 'Brief the support team on FAQs', done: true, children: [] }
+    ]
+  },
+  {
+    text: 'Post-launch monitoring',
+    expanded: false,
+    children: [
+      { text: 'Set up uptime alerts', done: false, children: [] },
+      { text: 'Monitor social mentions', done: false, children: [] },
+      { text: 'Daily standup for first two weeks', tags: [{ label: 'recurring', type: 'context' }], done: false, children: [] },
+      { text: 'Collect and triage user feedback', done: false, children: [] }
+    ]
+  },
+  {
+    text: 'Budget and resource allocation',
+    done: true,
+    expanded: false,
+    children: [
+      { text: 'Approve ad spend for launch week', done: true, children: [] },
+      { text: 'Reserve infrastructure headroom', done: true, children: [] }
+    ]
+  },
+  {
+    text: 'Legal and compliance',
+    expanded: true,
+    children: [
+      { text: 'Privacy policy finalized', done: true, tags: [{ label: 'done', type: 'done' }], children: [] },
+      { text: 'Cookie consent banner implemented', done: true, tags: [{ label: 'done', type: 'done' }], children: [] },
+      { text: 'GDPR data export endpoint', tags: [{ label: 'dev', type: 'context' }], done: false, children: [] }
+    ]
+  },
+  {
+    text: 'Team retrospective after launch',
+    note: 'Schedule for end of week two',
+    done: false,
+    children: []
+  }
+];
+
+const HELP_ITEMS = [
+  { keys: ['j'], label: 'Down' },
+  { keys: ['k'], label: 'Up' },
+  { keys: ['Enter'], label: 'Edit' },
+  { keys: ['Tab'], label: 'Indent' },
+  { keys: ['o'], label: 'Add below' },
+  { keys: ['Space'], label: 'Toggle done' },
+  { keys: ['l'], label: 'Expand' },
+  { keys: ['h'], label: 'Collapse' },
+  { keys: ['?'], label: 'All shortcuts' }
+];
+
+// State
+let focusedIndex = 2;
+let flatItems = [];
+
+function countDone(items) {
+  let total = 0;
+  let done = 0;
+  items.forEach(function(item) {
+    total++;
+    if (item.done) done++;
+    if (item.children && item.children.length > 0) {
+      const sub = countDone(item.children);
+      total += sub.total;
+      done += sub.done;
+    }
+  });
+  return { total: total, done: done };
+}
+
+function renderTag(tag) {
+  return '<span class="tag tag-' + tag.type + '">' + tag.label + '</span>';
+}
+
+function renderCheckbox(done) {
+  return '<div class="item-checkbox">' +
+    '<div class="checkbox-icon' + (done ? ' checked' : '') + '"></div>' +
+    '</div>';
+}
+
+function renderToggle(item, expanded) {
+  const hasChildren = item.children && item.children.length > 0;
+  if (!hasChildren) {
+    return '<div class="item-toggle leaf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>';
+  }
+  return '<div class="item-toggle' + (expanded ? ' expanded' : '') + '" data-toggle>' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>' +
+    '</div>';
+}
+
+function renderItemKbd() {
+  return '<div class="item-kbd">' +
+    '<kbd>e</kbd>' +
+    '</div>';
+}
+
+function renderChildren(children, parentExpanded, depth) {
+  if (!children || children.length === 0) return '';
+  const collapsedClass = parentExpanded === false ? ' collapsed' : '';
+  let html = '<ul class="children' + collapsedClass + '">';
+  children.forEach(function(child) {
+    html += renderItem(child, depth + 1);
+  });
+  html += '</ul>';
+  return html;
+}
+
+function renderItem(item, depth) {
+  const idx = flatItems.length;
+  flatItems.push(item);
+  const isFocused = idx === focusedIndex;
+  const expanded = item.expanded !== false;
+  const hasChildren = item.children && item.children.length > 0;
+
+  let rowClass = 'item-row';
+  if (isFocused) rowClass += ' focused';
+
+  let textClass = 'item-text';
+  if (item.done) textClass += ' done';
+
+  let tagsHtml = '';
+  if (item.tags) {
+    item.tags.forEach(function(tag) {
+      tagsHtml += renderTag(tag);
+    });
+  }
+
+  let countHtml = '';
+  if (hasChildren && !expanded) {
+    countHtml = '<span class="child-count">' + item.children.length + '</span>';
+  }
+
+  let noteHtml = '';
+  if (item.note) {
+    noteHtml = '<div class="item-note">' + item.note + '</div>';
+  }
+
+  let html = '<li class="outline-item">';
+  html += '<div class="' + rowClass + '" data-idx="' + idx + '">';
+  html += renderToggle(item, expanded);
+  html += renderCheckbox(item.done);
+  html += '<div class="' + textClass + '">';
+  html += item.text + tagsHtml + countHtml;
+  html += noteHtml;
+  html += '</div>';
+  html += renderItemKbd();
+  html += '</div>';
+  html += renderChildren(item.children, expanded, depth);
+  html += '</li>';
+  return html;
+}
+
+function renderOutline() {
+  flatItems = [];
+  const stats = countDone(OUTLINE_DATA);
+
+  let headerHtml = '<div class="list-header">';
+  headerHtml += '<h1 class="list-title">Q1 Product Launch</h1>';
+  headerHtml += '<div class="list-meta">';
+  headerHtml += '<span>' + stats.total + ' items</span>';
+  headerHtml += '<span class="list-meta-dot"></span>';
+  headerHtml += '<span>' + stats.done + ' completed</span>';
+  headerHtml += '<span class="list-meta-dot"></span>';
+  headerHtml += '<span>Updated 2 hours ago</span>';
+  headerHtml += '</div></div>';
+
+  let outlineHtml = '<ul class="outline">';
+  OUTLINE_DATA.forEach(function(item) {
+    outlineHtml += renderItem(item, 0);
+  });
+  outlineHtml += '</ul>';
+
+  document.getElementById('app').innerHTML = headerHtml + outlineHtml;
+}
+
+function renderHelpBar() {
+  let html = '';
+  HELP_ITEMS.forEach(function(item) {
+    html += '<div class="help-item">';
+    item.keys.forEach(function(key) {
+      html += '<kbd>' + key + '</kbd>';
+    });
+    html += '<span>' + item.label + '</span>';
+    html += '</div>';
+  });
+  document.getElementById('helpBar').innerHTML = html;
+}
+
+// Toggle expand/collapse
+document.addEventListener('click', function(e) {
+  const toggle = e.target.closest('[data-toggle]');
+  if (!toggle) return;
+  const row = toggle.closest('.item-row');
+  const idx = parseInt(row.getAttribute('data-idx'), 10);
+  const item = flatItems[idx];
+  if (item.expanded === undefined) {
+    item.expanded = false;
+  } else {
+    item.expanded = !item.expanded;
+  }
+  renderOutline();
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+  switch (e.key) {
+    case 'j':
+    case 'ArrowDown':
+      e.preventDefault();
+      if (focusedIndex < flatItems.length - 1) {
+        focusedIndex++;
+        renderOutline();
+      }
+      break;
+    case 'k':
+    case 'ArrowUp':
+      e.preventDefault();
+      if (focusedIndex > 0) {
+        focusedIndex--;
+        renderOutline();
+      }
+      break;
+    case 'l':
+    case 'ArrowRight':
+      e.preventDefault();
+      if (flatItems[focusedIndex] && flatItems[focusedIndex].children && flatItems[focusedIndex].children.length > 0) {
+        flatItems[focusedIndex].expanded = true;
+        renderOutline();
+      }
+      break;
+    case 'h':
+    case 'ArrowLeft':
+      e.preventDefault();
+      if (flatItems[focusedIndex]) {
+        flatItems[focusedIndex].expanded = false;
+        renderOutline();
+      }
+      break;
+    case ' ':
+      e.preventDefault();
+      if (flatItems[focusedIndex]) {
+        flatItems[focusedIndex].done = !flatItems[focusedIndex].done;
+        renderOutline();
+      }
+      break;
+  }
+
+  // Scroll focused into view
+  const focused = document.querySelector('.item-row.focused');
+  if (focused) {
+    focused.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }
+});
+
+// Click to focus
+document.addEventListener('click', function(e) {
+  const row = e.target.closest('.item-row');
+  if (!row || e.target.closest('[data-toggle]') || e.target.closest('.item-checkbox')) return;
+  const idx = parseInt(row.getAttribute('data-idx'), 10);
+  if (!isNaN(idx)) {
+    focusedIndex = idx;
+    renderOutline();
+  }
+});
+
+// Checkbox click
+document.addEventListener('click', function(e) {
+  const cb = e.target.closest('.item-checkbox');
+  if (!cb) return;
+  const row = cb.closest('.item-row');
+  const idx = parseInt(row.getAttribute('data-idx'), 10);
+  if (flatItems[idx]) {
+    flatItems[idx].done = !flatItems[idx].done;
+    renderOutline();
+  }
+});
+
+// Init
+renderOutline();
+renderHelpBar();
+</script>
+</body>
+</html>

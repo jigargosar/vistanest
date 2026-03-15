@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VistaNest — Hierarchical Outliner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #0c0d0f;
+  --bg-base: #121316;
+  --bg-raised: #1a1b1f;
+  --bg-hover: #1f2025;
+  --bg-active: #24252b;
+  --bg-focus: #1c2028;
+  --border-subtle: #2a2b30;
+  --border-dim: #222328;
+  --text-primary: #d8d9de;
+  --text-secondary: #8e8f98;
+  --text-tertiary: #5c5d66;
+  --text-ghost: #3d3e46;
+  --accent: #6b8acd;
+  --accent-dim: #4a6299;
+  --accent-glow: rgba(107, 138, 205, 0.08);
+  --accent-border: rgba(107, 138, 205, 0.18);
+  --done: #5a7a5a;
+  --done-text: #7a9a7a;
+  --badge-bg: #1e1f24;
+  --badge-border: #2e2f36;
+  --badge-text: #6a6b74;
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-display: 'Instrument Serif', serif;
+  --radius: 4px;
+  --item-gap: 2px;
+  --indent: 28px;
+  --transition: 120ms ease;
+}
+
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-weight: 400;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* === NOISE TEXTURE OVERLAY === */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.025;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
+
+/* === TOP BAR === */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-deep);
+  border-bottom: 1px solid var(--border-dim);
+  padding: 0 32px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  backdrop-filter: blur(12px);
+}
+
+.topbar::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-subtle) 20%, var(--border-subtle) 80%, transparent);
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-style: italic;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  user-select: none;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  margin-left: 8px;
+  overflow: hidden;
+}
+
+.breadcrumb-item {
+  white-space: nowrap;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius);
+  transition: color var(--transition), background var(--transition);
+}
+
+.breadcrumb-item:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+.breadcrumb-sep {
+  color: var(--text-ghost);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.topbar-spacer { flex: 1; }
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  width: 260px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  cursor: text;
+}
+
+.search-box:focus-within {
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.search-icon {
+  color: var(--text-ghost);
+  flex-shrink: 0;
+}
+
+.search-box input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  width: 100%;
+  caret-color: var(--accent);
+}
+
+.search-box input::placeholder {
+  color: var(--text-ghost);
+}
+
+.search-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--badge-text);
+  background: var(--badge-bg);
+  border: 1px solid var(--badge-border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.topbar-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: none;
+  color: var(--text-tertiary);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: color var(--transition), background var(--transition);
+}
+
+.topbar-btn:hover {
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+}
+
+/* === MAIN CONTENT === */
+.main {
+  max-width: 740px;
+  margin: 0 auto;
+  padding: 40px 24px 120px;
+}
+
+/* === LIST HEADER === */
+.list-header {
+  margin-bottom: 36px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.list-title {
+  font-family: var(--font-display);
+  font-size: 32px;
+  font-weight: 400;
+  color: var(--text-primary);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.list-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.list-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.progress-bar {
+  width: 80px;
+  height: 3px;
+  background: var(--bg-active);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 35%;
+  background: var(--accent-dim);
+  border-radius: 2px;
+  transition: width 400ms ease;
+}
+
+/* === OUTLINE ITEMS === */
+.outline {
+  list-style: none;
+  position: relative;
+}
+
+.outline-item {
+  position: relative;
+  border-radius: var(--radius);
+  transition: background var(--transition);
+}
+
+.outline-item + .outline-item {
+  margin-top: var(--item-gap);
+}
+
+.item-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 7px 8px 7px 4px;
+  border-radius: var(--radius);
+  cursor: default;
+  position: relative;
+  transition: background var(--transition);
+  min-height: 38px;
+}
+
+.item-row:hover {
+  background: var(--bg-hover);
+}
+
+/* Focused item */
+.item-row.focused {
+  background: var(--bg-focus);
+  box-shadow: inset 2px 0 0 var(--accent-dim);
+}
+
+.item-row.focused::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--accent-border);
+  pointer-events: none;
+}
+
+/* === CHEVRON TOGGLE === */
+.chevron-area {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  margin-right: 4px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background var(--transition);
+}
+
+.chevron-area:hover {
+  background: var(--bg-active);
+}
+
+.chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--text-ghost);
+  transition: transform 150ms ease, color var(--transition);
+}
+
+.chevron.expanded {
+  transform: rotate(90deg);
+}
+
+.chevron-area:hover .chevron {
+  color: var(--text-tertiary);
+}
+
+/* Leaf bullet */
+.leaf-bullet {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  margin-right: 4px;
+}
+
+.leaf-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-ghost);
+}
+
+/* === ITEM TEXT === */
+.item-text {
+  flex: 1;
+  font-size: 16px;
+  line-height: 1.55;
+  padding-top: 1px;
+  color: var(--text-primary);
+}
+
+.item-text.level-0 {
+  font-weight: 500;
+  font-size: 16.5px;
+}
+
+.item-note {
+  display: block;
+  font-size: 13.5px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+/* Completed state */
+.item-row.done .item-text {
+  color: var(--done-text);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-ghost);
+  text-decoration-thickness: 1px;
+}
+
+.item-row.done .leaf-dot {
+  background: var(--done);
+}
+
+/* === INLINE BADGES === */
+.kbd {
+  display: inline-flex;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--badge-text);
+  background: var(--badge-bg);
+  border: 1px solid var(--badge-border);
+  padding: 0px 5px;
+  border-radius: 3px;
+  line-height: 1.6;
+  margin-left: 8px;
+  vertical-align: middle;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.tag {
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--accent);
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-border);
+  padding: 0px 6px;
+  border-radius: 3px;
+  line-height: 1.6;
+  margin-left: 8px;
+  vertical-align: middle;
+  flex-shrink: 0;
+  margin-top: 4px;
+  letter-spacing: 0.01em;
+}
+
+.tag.priority {
+  color: #c9886a;
+  background: rgba(201, 136, 106, 0.08);
+  border-color: rgba(201, 136, 106, 0.18);
+}
+
+.tag.due {
+  color: #9a8abf;
+  background: rgba(154, 138, 191, 0.08);
+  border-color: rgba(154, 138, 191, 0.18);
+}
+
+/* === CHILDREN === */
+.children {
+  list-style: none;
+  padding-left: var(--indent);
+  position: relative;
+}
+
+/* Indent guide lines */
+.children::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 0;
+  bottom: 8px;
+  width: 1px;
+  background: var(--border-dim);
+}
+
+.children.collapsed {
+  display: none;
+}
+
+/* === KEYBOARD HELP STRIP === */
+.help-strip {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg-deep);
+  border-top: 1px solid var(--border-dim);
+  padding: 8px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  z-index: 100;
+}
+
+.help-strip::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-subtle) 20%, var(--border-subtle) 80%, transparent);
+}
+
+.help-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.help-item .kbd {
+  margin: 0;
+  font-size: 10px;
+}
+
+.help-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border-dim);
+}
+
+/* === EMPTY STATE PROMPT === */
+.new-item-prompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 30px;
+  color: var(--text-ghost);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: color var(--transition), background var(--transition);
+  margin-top: 4px;
+}
+
+.new-item-prompt:hover {
+  color: var(--text-tertiary);
+  background: var(--bg-hover);
+}
+
+.new-item-prompt .plus-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.5;
+}
+
+/* === ITEM COUNT BADGE (collapsed) === */
+.child-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-ghost);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-dim);
+  padding: 0 5px;
+  border-radius: 3px;
+  line-height: 1.6;
+  margin-left: 6px;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+/* === ANIMATIONS === */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.outline > .outline-item {
+  animation: fadeSlideIn 300ms ease both;
+}
+
+/* Staggered entrance via JS */
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-ghost);
+}
+
+/* === SELECTION === */
+::selection {
+  background: rgba(107, 138, 205, 0.25);
+  color: var(--text-primary);
+}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<header class="topbar">
+  <div class="logo">VistaNest</div>
+  <div class="breadcrumb">
+    <span class="breadcrumb-sep">/</span>
+    <span class="breadcrumb-item">Projects</span>
+    <span class="breadcrumb-sep">/</span>
+    <span class="breadcrumb-item" style="color: var(--text-secondary);">Product Roadmap Q1</span>
+  </div>
+  <div class="topbar-spacer"></div>
+  <div class="search-box">
+    <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" placeholder="Search items...">
+    <span class="search-badge">/</span>
+  </div>
+  <div class="topbar-actions">
+    <button class="topbar-btn" title="Undo">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+    </button>
+    <button class="topbar-btn" title="Settings">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+    </button>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="main">
+
+  <!-- List Header -->
+  <div class="list-header">
+    <h1 class="list-title">Product Roadmap Q1</h1>
+    <div class="list-meta">
+      <span class="list-meta-item">14 items</span>
+      <span class="list-meta-item">
+        <div class="progress-bar"><div class="progress-fill"></div></div>
+        5 / 14
+      </span>
+      <span class="list-meta-item">Updated 2h ago</span>
+    </div>
+  </div>
+
+  <!-- Outline -->
+  <ul class="outline" id="outline-root"></ul>
+
+</main>
+
+<!-- Keyboard Help Strip -->
+<footer class="help-strip">
+  <div class="help-item"><span class="kbd">j</span><span class="kbd">k</span> navigate</div>
+  <div class="help-sep"></div>
+  <div class="help-item"><span class="kbd">Enter</span> edit</div>
+  <div class="help-sep"></div>
+  <div class="help-item"><span class="kbd">Tab</span> indent</div>
+  <div class="help-sep"></div>
+  <div class="help-item"><span class="kbd">Space</span> complete</div>
+  <div class="help-sep"></div>
+  <div class="help-item"><span class="kbd">o</span> new below</div>
+  <div class="help-sep"></div>
+  <div class="help-item"><span class="kbd">Ctrl+&uarr;&darr;</span> move</div>
+  <div class="help-sep"></div>
+  <div class="help-item"><span class="kbd">?</span> all shortcuts</div>
+</footer>
+
+<script>
+const DATA = [
+  {
+    text: "Core Infrastructure",
+    expanded: true,
+    children: [
+      {
+        text: "Migrate to edge runtime",
+        note: "Move API routes to Cloudflare Workers for lower latency",
+        tags: [{ label: "backend", type: "default" }],
+        kbd: null,
+        done: false
+      },
+      {
+        text: "Set up database replication",
+        done: true,
+        children: [
+          { text: "Configure read replicas", done: true },
+          { text: "Test failover scenarios", done: true },
+          { text: "Update connection pooling", done: true }
+        ]
+      },
+      {
+        text: "Implement rate limiting",
+        tags: [{ label: "P1", type: "priority" }],
+        done: false
+      }
+    ]
+  },
+  {
+    text: "Authentication & Security",
+    expanded: true,
+    children: [
+      {
+        text: "Add passkey support",
+        note: "WebAuthn flow with fallback to magic link",
+        tags: [{ label: "P1", type: "priority" }, { label: "security", type: "default" }],
+        done: false,
+        focused: true
+      },
+      { text: "Implement session rotation", done: false },
+      { text: "Audit third-party dependencies", done: true },
+      {
+        text: "SSO integration for enterprise",
+        tags: [{ label: "Mar 28", type: "due" }],
+        done: false
+      }
+    ]
+  },
+  {
+    text: "Editor Experience",
+    expanded: false,
+    childCount: 6,
+    children: [
+      { text: "Real-time collaborative editing" },
+      { text: "Markdown shortcuts" },
+      { text: "Drag and drop reordering" },
+      { text: "Inline image support" },
+      { text: "Code block syntax highlighting" },
+      { text: "Export to PDF/Markdown" }
+    ]
+  },
+  {
+    text: "Performance Optimization",
+    expanded: true,
+    children: [
+      { text: "Virtual scrolling for large lists", done: true },
+      {
+        text: "Lazy load nested outlines",
+        note: "Only fetch children when user expands a node",
+        done: false
+      },
+      { text: "Service worker for offline mode", done: false }
+    ]
+  },
+  {
+    text: "Launch Checklist",
+    tags: [{ label: "Mar 31", type: "due" }],
+    expanded: false,
+    childCount: 4,
+    children: [
+      { text: "Beta user feedback round" },
+      { text: "Landing page copy review" },
+      { text: "Load testing at 10k concurrent" },
+      { text: "Prepare changelog and migration guide" }
+    ]
+  }
+];
+
+function chevronSVG(expanded) {
+  return '<svg class="chevron ' + (expanded ? 'expanded' : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+}
+
+function renderTag(tag) {
+  var cls = "tag";
+  if (tag.type === "priority") cls += " priority";
+  if (tag.type === "due") cls += " due";
+  return '<span class="' + cls + '">' + tag.label + '</span>';
+}
+
+function renderItem(item, level, index) {
+  var hasChildren = item.children && item.children.length > 0;
+  var isExpanded = item.expanded !== false;
+  var rowClasses = "item-row";
+  if (item.done) rowClasses += " done";
+  if (item.focused) rowClasses += " focused";
+
+  var html = '<li class="outline-item" style="animation-delay: ' + (index * 40) + 'ms">';
+  html += '<div class="' + rowClasses + '">';
+
+  if (hasChildren) {
+    html += '<div class="chevron-area" data-toggle>' + chevronSVG(isExpanded) + '</div>';
+  } else {
+    html += '<div class="leaf-bullet"><div class="leaf-dot"></div></div>';
+  }
+
+  html += '<span class="item-text' + (level === 0 ? ' level-0' : '') + '">';
+  html += item.text;
+  if (item.note) {
+    html += '<span class="item-note">' + item.note + '</span>';
+  }
+  html += '</span>';
+
+  if (item.tags) {
+    for (var t = 0; t < item.tags.length; t++) {
+      html += renderTag(item.tags[t]);
+    }
+  }
+
+  if (item.kbd) {
+    html += '<span class="kbd">' + item.kbd + '</span>';
+  }
+
+  if (hasChildren && !isExpanded && item.childCount) {
+    html += '<span class="child-count">' + item.childCount + '</span>';
+  }
+
+  html += '</div>';
+
+  if (hasChildren) {
+    html += '<ul class="children' + (isExpanded ? '' : ' collapsed') + '">';
+    for (var c = 0; c < item.children.length; c++) {
+      html += renderItem(item.children[c], level + 1, c);
+    }
+    html += '</ul>';
+  }
+
+  html += '</li>';
+  return html;
+}
+
+function renderOutline() {
+  var root = document.getElementById("outline-root");
+  var html = "";
+  for (var i = 0; i < DATA.length; i++) {
+    html += renderItem(DATA[i], 0, i);
+  }
+  html += '<div class="new-item-prompt"><svg class="plus-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add item<span class="kbd" style="margin-top:0">o</span></div>';
+  root.innerHTML = html;
+}
+
+renderOutline();
+
+// Toggle expand/collapse
+document.addEventListener("click", function(e) {
+  var toggle = e.target.closest("[data-toggle]");
+  if (!toggle) return;
+  var item = toggle.closest(".outline-item");
+  if (!item) return;
+  var children = item.querySelector(".children");
+  if (!children) return;
+  var chevron = toggle.querySelector(".chevron");
+  if (children.classList.contains("collapsed")) {
+    children.classList.remove("collapsed");
+    chevron.classList.add("expanded");
+  } else {
+    children.classList.add("collapsed");
+    chevron.classList.remove("expanded");
+  }
+});
+
+// Keyboard navigation
+var focusedRow = document.querySelector(".item-row.focused");
+
+function getAllRows() {
+  return Array.from(document.querySelectorAll(".item-row")).filter(function(row) {
+    var parent = row.closest(".children.collapsed");
+    return !parent;
+  });
+}
+
+function setFocus(row) {
+  if (focusedRow) {
+    focusedRow.classList.remove("focused");
+    var oldBefore = focusedRow.querySelector("::before");
+  }
+  focusedRow = row;
+  focusedRow.classList.add("focused");
+  focusedRow.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+document.addEventListener("keydown", function(e) {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+
+  var rows = getAllRows();
+  var idx = rows.indexOf(focusedRow);
+
+  if (e.key === "j" || e.key === "ArrowDown") {
+    e.preventDefault();
+    if (idx < rows.length - 1) setFocus(rows[idx + 1]);
+  } else if (e.key === "k" || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (idx > 0) setFocus(rows[idx - 1]);
+  } else if (e.key === "/" ) {
+    e.preventDefault();
+    document.querySelector(".search-box input").focus();
+  } else if (e.key === " ") {
+    e.preventDefault();
+    if (focusedRow) {
+      focusedRow.classList.toggle("done");
+    }
+  }
+});
+
+// Escape from search
+document.querySelector(".search-box input").addEventListener("keydown", function(e) {
+  if (e.key === "Escape") {
+    e.target.blur();
+    e.target.value = "";
+  }
+});
+</script>
+
+</body>
+</html>

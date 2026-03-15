@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VistaNest — Hierarchical Outliner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #0c0d10;
+  --bg-surface: #12131a;
+  --bg-raised: #1a1b25;
+  --bg-hover: #1e2030;
+  --bg-focus: #1c1f35;
+  --border-subtle: #23263a;
+  --border-muted: #2a2d45;
+  --text-primary: #d4d7e6;
+  --text-secondary: #7c809a;
+  --text-tertiary: #4e5270;
+  --accent: #6e8cf7;
+  --accent-dim: #4a62b8;
+  --accent-glow: rgba(110, 140, 247, 0.08);
+  --accent-subtle: rgba(110, 140, 247, 0.15);
+  --done-color: #4e5270;
+  --badge-bg: #1a1d30;
+  --badge-border: #2a2f4d;
+  --badge-text: #5a6190;
+  --checkbox-done: #3d5a3d;
+  --font-body: 'DM Sans', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --content-width: 740px;
+  --topbar-height: 56px;
+}
+
+html { font-size: 16px; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Subtle noise grain */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ─── Top Bar ─── */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-height);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  background: rgba(18, 19, 26, 0.92);
+}
+
+.topbar-inner {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo {
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dim) 100%);
+  opacity: 0.7;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--text-tertiary);
+  margin-left: 8px;
+}
+
+.breadcrumb-sep {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  opacity: 0.5;
+}
+
+.breadcrumb-item {
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  transition: color 0.15s;
+}
+
+.breadcrumb-item:hover { color: var(--text-primary); }
+.breadcrumb-item.current { color: var(--text-primary); font-weight: 500; }
+
+.topbar-spacer { flex: 1; }
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  min-width: 200px;
+}
+
+.search-box:hover {
+  border-color: var(--border-muted);
+  background: var(--bg-hover);
+}
+
+.search-icon {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.search-text {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  font-family: var(--font-body);
+  flex: 1;
+}
+
+.search-kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--badge-text);
+  background: var(--badge-bg);
+  border: 1px solid var(--badge-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  letter-spacing: 0.02em;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.topbar-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.topbar-btn:hover {
+  background: var(--bg-raised);
+  color: var(--text-secondary);
+}
+
+/* ─── Main Content ─── */
+.main {
+  padding-top: calc(var(--topbar-height) + 32px);
+  padding-bottom: 120px;
+  min-height: 100vh;
+}
+
+.content-area {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* ─── List Header ─── */
+.list-header {
+  margin-bottom: 36px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.list-title {
+  font-size: 24px;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.list-meta {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.list-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ─── Outline Items ─── */
+.outline {
+  list-style: none;
+}
+
+.outline-item {
+  position: relative;
+}
+
+.item-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 7px 8px 7px 4px;
+  border-radius: 6px;
+  cursor: default;
+  transition: background 0.12s;
+  position: relative;
+}
+
+.item-row:hover {
+  background: var(--bg-hover);
+}
+
+.item-row.focused {
+  background: var(--bg-focus);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.item-row.focused .item-text {
+  color: #e0e3f0;
+}
+
+/* Chevron toggle */
+.item-toggle {
+  width: 22px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+  color: var(--text-tertiary);
+  transition: color 0.15s, transform 0.2s;
+  margin-top: 1px;
+}
+
+.item-toggle:hover { color: var(--text-secondary); }
+
+.item-toggle svg {
+  transition: transform 0.2s ease;
+}
+
+.item-toggle.collapsed svg {
+  transform: rotate(-90deg);
+}
+
+.item-toggle.leaf {
+  visibility: hidden;
+}
+
+/* Checkbox */
+.item-checkbox {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--border-muted);
+  border-radius: 4px;
+  flex-shrink: 0;
+  margin-top: 5px;
+  margin-right: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.item-checkbox:hover {
+  border-color: var(--accent-dim);
+}
+
+.item-checkbox.checked {
+  border-color: var(--checkbox-done);
+  background: var(--checkbox-done);
+}
+
+.item-checkbox.checked::after {
+  content: '';
+  width: 9px;
+  height: 5px;
+  border-left: 1.5px solid rgba(255,255,255,0.7);
+  border-bottom: 1.5px solid rgba(255,255,255,0.7);
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+/* Item text */
+.item-text {
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.item-text.done {
+  color: var(--done-color);
+  text-decoration: line-through;
+  text-decoration-color: var(--border-muted);
+}
+
+.item-text .note {
+  display: block;
+  font-size: 14px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+  line-height: 1.5;
+  font-weight: 300;
+}
+
+.item-text .tag {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--accent);
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-subtle);
+  padding: 0 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+  font-weight: 400;
+  vertical-align: middle;
+  line-height: 1.7;
+}
+
+.item-text .tag.muted {
+  color: var(--text-tertiary);
+  background: var(--bg-raised);
+  border-color: var(--border-subtle);
+}
+
+/* Inline keyboard shortcut badges */
+.item-kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--badge-text);
+  background: var(--badge-bg);
+  border: 1px solid var(--badge-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  margin-left: 8px;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  align-self: center;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.item-row:hover .item-kbd,
+.item-row.focused .item-kbd {
+  opacity: 1;
+}
+
+/* Children / nesting */
+.item-children {
+  list-style: none;
+  padding-left: 28px;
+  position: relative;
+}
+
+/* Subtle nesting guide line */
+.item-children::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 0;
+  bottom: 8px;
+  width: 1px;
+  background: var(--border-subtle);
+  opacity: 0.5;
+}
+
+.item-children.hidden {
+  display: none;
+}
+
+/* Deep nesting (3rd level) */
+.item-children .item-children {
+  padding-left: 26px;
+}
+
+.item-children .item-children::before {
+  left: 14px;
+}
+
+/* ─── Collapsed children indicator ─── */
+.collapsed-count {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  padding: 0 6px;
+  border-radius: 10px;
+  margin-left: 8px;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* ─── Footer Shortcut Bar ─── */
+.shortcut-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(12, 13, 16, 0.95);
+  border-top: 1px solid var(--border-subtle);
+  padding: 10px 24px;
+  backdrop-filter: blur(12px);
+  z-index: 100;
+}
+
+.shortcut-bar-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.shortcut-pair {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.shortcut-pair kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--badge-text);
+  background: var(--badge-bg);
+  border: 1px solid var(--badge-border);
+  border-radius: 4px;
+  padding: 2px 5px;
+  min-width: 18px;
+  text-align: center;
+}
+
+.shortcut-pair span {
+  color: var(--text-tertiary);
+  opacity: 0.7;
+}
+
+.shortcut-sep {
+  width: 1px;
+  height: 14px;
+  background: var(--border-subtle);
+}
+
+/* ─── Selection / multiselect highlight ─── */
+.item-row.selected {
+  background: rgba(110, 140, 247, 0.06);
+  box-shadow: inset 2px 0 0 var(--accent-dim);
+}
+
+/* ─── Editing state ─── */
+.item-row.editing {
+  background: var(--bg-focus);
+  box-shadow: inset 2px 0 0 var(--accent), 0 0 0 1px var(--accent-subtle);
+  border-radius: 6px;
+}
+
+.item-row.editing .item-text {
+  outline: none;
+  caret-color: var(--accent);
+}
+
+/* ─── Drag handle (visible on hover) ─── */
+.drag-handle {
+  width: 14px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: grab;
+  color: var(--text-tertiary);
+  opacity: 0;
+  transition: opacity 0.15s;
+  margin-top: 1px;
+}
+
+.item-row:hover .drag-handle {
+  opacity: 0.4;
+}
+
+.drag-handle:hover {
+  opacity: 0.8 !important;
+}
+
+/* ─── Animations ─── */
+@keyframes fadeSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.outline > .outline-item {
+  animation: fadeSlideIn 0.3s ease both;
+}
+
+.outline > .outline-item:nth-child(1) { animation-delay: 0.02s; }
+.outline > .outline-item:nth-child(2) { animation-delay: 0.05s; }
+.outline > .outline-item:nth-child(3) { animation-delay: 0.08s; }
+.outline > .outline-item:nth-child(4) { animation-delay: 0.11s; }
+.outline > .outline-item:nth-child(5) { animation-delay: 0.14s; }
+.outline > .outline-item:nth-child(6) { animation-delay: 0.17s; }
+.outline > .outline-item:nth-child(7) { animation-delay: 0.20s; }
+.outline > .outline-item:nth-child(8) { animation-delay: 0.23s; }
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-muted);
+}
+
+/* ─── Command palette overlay (shown behind, hinted) ─── */
+.command-palette-hint {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-raised);
+  border: 1px solid var(--border-muted);
+  border-radius: 12px;
+  padding: 16px;
+  width: 480px;
+  display: none;
+  z-index: 200;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+}
+
+/* ─── Empty add row ─── */
+.add-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 30px;
+  color: var(--text-tertiary);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.12s, color 0.15s;
+  margin-top: 4px;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+}
+
+.add-item-row:hover {
+  opacity: 1;
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+.add-item-icon {
+  font-size: 16px;
+  width: 20px;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="logo">
+      <div class="logo-mark"></div>
+      VistaNest
+    </div>
+    <nav class="breadcrumb">
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-item">Projects</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-item current">VistaNest Roadmap</span>
+    </nav>
+    <div class="topbar-spacer"></div>
+    <div class="search-box">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="search-text">Search...</span>
+      <kbd class="search-kbd">/</kbd>
+    </div>
+    <div class="topbar-actions">
+      <button class="topbar-btn" title="Undo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      </button>
+      <button class="topbar-btn" title="Settings">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="main">
+  <div class="content-area">
+
+    <div class="list-header">
+      <h1 class="list-title">VistaNest Roadmap</h1>
+      <div class="list-meta">
+        <span class="list-meta-item">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Updated 2 hours ago
+        </span>
+        <span class="list-meta-item">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          24 items
+        </span>
+        <span class="list-meta-item">7 completed</span>
+      </div>
+    </div>
+
+    <!-- Outline -->
+    <ul class="outline" id="outline-root"></ul>
+
+    <div class="add-item-row">
+      <span class="add-item-icon">+</span>
+      <span>Add item</span>
+      <kbd class="search-kbd" style="margin-left: auto; opacity: 0.6;">O</kbd>
+    </div>
+
+  </div>
+</main>
+
+<!-- Bottom Shortcut Bar -->
+<footer class="shortcut-bar">
+  <div class="shortcut-bar-inner">
+    <div class="shortcut-pair"><kbd>j</kbd><kbd>k</kbd> <span>navigate</span></div>
+    <div class="shortcut-sep"></div>
+    <div class="shortcut-pair"><kbd>Enter</kbd> <span>edit</span></div>
+    <div class="shortcut-sep"></div>
+    <div class="shortcut-pair"><kbd>Tab</kbd> <span>indent</span></div>
+    <div class="shortcut-sep"></div>
+    <div class="shortcut-pair"><kbd>Space</kbd> <span>check</span></div>
+    <div class="shortcut-sep"></div>
+    <div class="shortcut-pair"><kbd>O</kbd> <span>new below</span></div>
+    <div class="shortcut-sep"></div>
+    <div class="shortcut-pair"><kbd>Ctrl+.</kbd> <span>collapse</span></div>
+    <div class="shortcut-sep"></div>
+    <div class="shortcut-pair"><kbd>Ctrl+K</kbd> <span>command</span></div>
+    <div class="shortcut-sep"></div>
+    <div class="shortcut-pair"><kbd>?</kbd> <span>all shortcuts</span></div>
+  </div>
+</footer>
+
+<script>
+const outlineData = [
+  {
+    text: 'Core Architecture',
+    tag: 'v0.1',
+    tagStyle: '',
+    done: false,
+    collapsed: false,
+    focused: false,
+    kbd: '',
+    note: '',
+    children: [
+      {
+        text: 'Hierarchical data model with CRDT sync',
+        done: true,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      },
+      {
+        text: 'Undo / redo with operation log',
+        done: true,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      },
+      {
+        text: 'Drag-and-drop reordering',
+        done: false,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: 'Use dnd-kit, support cross-level moves',
+        children: []
+      },
+      {
+        text: 'Clipboard operations (cut, copy, paste tree)',
+        done: false,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      }
+    ]
+  },
+  {
+    text: 'Keyboard Navigation',
+    tag: 'v0.1',
+    tagStyle: '',
+    done: false,
+    collapsed: false,
+    focused: false,
+    kbd: '',
+    note: '',
+    children: [
+      {
+        text: 'Vim-style j/k movement',
+        done: true,
+        collapsed: false,
+        focused: true,
+        kbd: 'j k',
+        note: '',
+        children: []
+      },
+      {
+        text: 'Indent / outdent with Tab / Shift+Tab',
+        done: true,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      },
+      {
+        text: 'Collapse / expand toggle',
+        done: false,
+        collapsed: false,
+        focused: false,
+        kbd: 'Ctrl+.',
+        note: '',
+        children: []
+      },
+      {
+        text: 'Multi-select with Shift+j/k',
+        done: false,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      },
+      {
+        text: 'Focus mode: zoom into subtree',
+        done: false,
+        collapsed: false,
+        focused: false,
+        kbd: 'z',
+        note: 'Show only the focused subtree, breadcrumb updates',
+        children: []
+      }
+    ]
+  },
+  {
+    text: 'Search & Filtering',
+    tag: 'v0.2',
+    tagStyle: 'muted',
+    done: false,
+    collapsed: true,
+    focused: false,
+    kbd: '/',
+    note: '',
+    childCount: 4,
+    children: [
+      { text: 'Full-text incremental search', done: false, children: [] },
+      { text: 'Tag-based filtering', done: false, children: [] },
+      { text: 'Saved search queries', done: false, children: [] },
+      { text: 'Search within subtree', done: false, children: [] }
+    ]
+  },
+  {
+    text: 'Inline Editing',
+    done: false,
+    collapsed: false,
+    focused: false,
+    kbd: '',
+    note: '',
+    children: [
+      {
+        text: 'Rich text: bold, italic, code, links',
+        done: false,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      },
+      {
+        text: 'Markdown paste support',
+        done: false,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      },
+      {
+        text: 'Notes field below each item',
+        done: true,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      }
+    ]
+  },
+  {
+    text: 'Collaboration',
+    tag: 'v0.3',
+    tagStyle: 'muted',
+    done: false,
+    collapsed: true,
+    focused: false,
+    kbd: '',
+    note: '',
+    childCount: 3,
+    children: [
+      { text: 'Real-time multi-user editing', done: false, children: [] },
+      { text: 'Presence indicators', done: false, children: [] },
+      { text: 'Comment threads on items', done: false, children: [] }
+    ]
+  },
+  {
+    text: 'Theming & Customization',
+    done: false,
+    collapsed: false,
+    focused: false,
+    kbd: '',
+    note: '',
+    children: [
+      {
+        text: 'Dark / light theme toggle',
+        done: true,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      },
+      {
+        text: 'Custom accent colors',
+        done: false,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      },
+      {
+        text: 'Font size and density preferences',
+        done: true,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      }
+    ]
+  },
+  {
+    text: 'Data & Export',
+    done: false,
+    collapsed: false,
+    focused: false,
+    kbd: '',
+    note: '',
+    children: [
+      {
+        text: 'Export as Markdown / OPML',
+        done: false,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      },
+      {
+        text: 'Import from Checkvist, WorkFlowy',
+        done: false,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      }
+    ]
+  },
+  {
+    text: 'Performance',
+    done: false,
+    collapsed: false,
+    focused: false,
+    kbd: '',
+    tag: 'ongoing',
+    tagStyle: 'muted',
+    note: '',
+    children: [
+      {
+        text: 'Virtual scrolling for 10k+ item lists',
+        done: false,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      },
+      {
+        text: 'Lazy-load collapsed subtrees',
+        done: false,
+        collapsed: false,
+        focused: false,
+        kbd: '',
+        note: '',
+        children: []
+      }
+    ]
+  }
+];
+
+function chevronSVG() {
+  return '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+}
+
+function gripSVG() {
+  return '<svg width="8" height="14" viewBox="0 0 8 14" fill="currentColor"><circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/><circle cx="2" cy="7" r="1.2"/><circle cx="6" cy="7" r="1.2"/><circle cx="2" cy="12" r="1.2"/><circle cx="6" cy="12" r="1.2"/></svg>';
+}
+
+function renderItem(item) {
+  var li = document.createElement('li');
+  li.className = 'outline-item';
+
+  var row = document.createElement('div');
+  row.className = 'item-row';
+  if (item.focused) row.className += ' focused';
+
+  // Drag handle
+  var drag = document.createElement('div');
+  drag.className = 'drag-handle';
+  drag.innerHTML = gripSVG();
+  row.appendChild(drag);
+
+  // Toggle chevron
+  var toggle = document.createElement('div');
+  var hasKids = item.children && item.children.length > 0;
+  toggle.className = 'item-toggle';
+  if (!hasKids) {
+    toggle.className += ' leaf';
+  } else if (item.collapsed) {
+    toggle.className += ' collapsed';
+  }
+  toggle.innerHTML = chevronSVG();
+  row.appendChild(toggle);
+
+  // Checkbox
+  var cb = document.createElement('div');
+  cb.className = 'item-checkbox';
+  if (item.done) cb.className += ' checked';
+  row.appendChild(cb);
+
+  // Text
+  var textEl = document.createElement('div');
+  textEl.className = 'item-text';
+  if (item.done) textEl.className += ' done';
+
+  var content = item.text;
+  if (item.tag) {
+    var tagClass = item.tagStyle ? ' ' + item.tagStyle : '';
+    content += '<span class="tag' + tagClass + '">' + item.tag + '</span>';
+  }
+  if (item.note) {
+    content += '<span class="note">' + item.note + '</span>';
+  }
+  textEl.innerHTML = content;
+  row.appendChild(textEl);
+
+  // Collapsed count badge
+  if (item.collapsed && item.childCount) {
+    var countBadge = document.createElement('span');
+    countBadge.className = 'collapsed-count';
+    countBadge.textContent = item.childCount;
+    row.appendChild(countBadge);
+  }
+
+  // Keyboard shortcut badge
+  if (item.kbd) {
+    var kbd = document.createElement('span');
+    kbd.className = 'item-kbd';
+    kbd.textContent = item.kbd;
+    row.appendChild(kbd);
+  }
+
+  li.appendChild(row);
+
+  // Children
+  if (hasKids) {
+    var ul = document.createElement('ul');
+    ul.className = 'item-children';
+    if (item.collapsed) ul.className += ' hidden';
+
+    for (var i = 0; i < item.children.length; i++) {
+      ul.appendChild(renderItem(item.children[i]));
+    }
+    li.appendChild(ul);
+
+    // Toggle click behavior
+    toggle.addEventListener('click', function() {
+      var isCollapsed = ul.classList.contains('hidden');
+      if (isCollapsed) {
+        ul.classList.remove('hidden');
+        toggle.classList.remove('collapsed');
+      } else {
+        ul.classList.add('hidden');
+        toggle.classList.add('collapsed');
+      }
+    });
+  }
+
+  // Checkbox click behavior
+  cb.addEventListener('click', function() {
+    cb.classList.toggle('checked');
+    textEl.classList.toggle('done');
+  });
+
+  return li;
+}
+
+function renderOutline() {
+  var root = document.getElementById('outline-root');
+  root.innerHTML = '';
+  for (var i = 0; i < outlineData.length; i++) {
+    root.appendChild(renderItem(outlineData[i]));
+  }
+}
+
+renderOutline();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VistaNest — Hierarchical Outliner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #0e0e10;
+  --bg-surface: #16161a;
+  --bg-raised: #1e1e24;
+  --bg-hover: #24242c;
+  --bg-focused: #1c1f2a;
+  --border-subtle: #2a2a34;
+  --border-dim: #222228;
+  --text-primary: #e2e0dc;
+  --text-secondary: #8a8890;
+  --text-tertiary: #5c5a62;
+  --text-ghost: #3e3c44;
+  --accent-warm: #d4956a;
+  --accent-warm-dim: #d4956a22;
+  --accent-warm-glow: #d4956a10;
+  --accent-blue: #6a8fd4;
+  --accent-blue-dim: #6a8fd418;
+  --accent-green: #7abd7e;
+  --accent-red: #d46a6a;
+  --chevron-color: #4a4852;
+  --chevron-active: #7a7882;
+  --kbd-bg: #1a1a20;
+  --kbd-border: #33333d;
+  --kbd-text: #6e6c76;
+  --focus-glow: 0 0 0 1px #d4956a30, 0 0 20px #d4956a08, 0 2px 12px #00000040;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --content-width: 740px;
+  --topbar-height: 54px;
+}
+
+html { font-size: 16px; }
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* === TOPBAR === */
+.topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-height);
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 100;
+  backdrop-filter: blur(12px);
+  background: rgba(22, 22, 26, 0.92);
+}
+
+.topbar-inner {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo {
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-icon {
+  width: 22px;
+  height: 22px;
+  background: var(--accent-warm);
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.logo-icon::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--bg-deep);
+  border-radius: 2px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.breadcrumb-sep {
+  font-size: 11px;
+  color: var(--text-ghost);
+  margin: 0 2px;
+}
+
+.breadcrumb-item {
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+}
+
+.breadcrumb-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.breadcrumb-current {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.topbar-spacer { flex: 1; }
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  min-width: 220px;
+  cursor: text;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-box:hover {
+  border-color: #3a3a44;
+}
+
+.search-box:focus-within {
+  border-color: var(--accent-warm);
+  box-shadow: 0 0 0 3px var(--accent-warm-dim);
+}
+
+.search-icon {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.search-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 13px;
+  width: 100%;
+  line-height: 1.4;
+}
+
+.search-input::placeholder { color: var(--text-ghost); }
+
+.search-kbd {
+  flex-shrink: 0;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.topbar-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  border: none;
+  background: none;
+}
+
+.topbar-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-secondary);
+}
+
+/* === KBD BADGES === */
+kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  padding: 3px 5px;
+  background: var(--kbd-bg);
+  border: 1px solid var(--kbd-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  color: var(--kbd-text);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.3);
+}
+
+/* === MAIN CONTENT === */
+.main {
+  padding-top: calc(var(--topbar-height) + 32px);
+  padding-bottom: 120px;
+}
+
+.content {
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+/* === LIST HEADER === */
+.list-header {
+  margin-bottom: 36px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.list-title {
+  font-size: 26px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+  line-height: 1.3;
+  margin-bottom: 8px;
+}
+
+.list-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--text-tertiary);
+}
+
+.list-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.list-meta-dot {
+  width: 4px;
+  height: 4px;
+  background: var(--text-ghost);
+  border-radius: 50%;
+}
+
+/* === OUTLINE ITEMS === */
+.outline {
+  list-style: none;
+}
+
+.outline-item {
+  position: relative;
+}
+
+.item-row {
+  display: flex;
+  align-items: flex-start;
+  padding: 7px 10px 7px 0;
+  margin-left: -10px;
+  margin-right: -10px;
+  border-radius: var(--radius-md);
+  cursor: default;
+  transition: background 0.12s;
+  position: relative;
+}
+
+.item-row:hover {
+  background: var(--bg-hover);
+}
+
+.item-row.focused {
+  background: var(--bg-focused);
+  box-shadow: var(--focus-glow);
+}
+
+.item-row.focused .item-text {
+  color: #efefeb;
+}
+
+/* Connector lines for nesting */
+.outline-children {
+  list-style: none;
+  padding-left: 28px;
+  position: relative;
+}
+
+.outline-children::before {
+  content: '';
+  position: absolute;
+  left: 14px;
+  top: 0;
+  bottom: 12px;
+  width: 1px;
+  background: var(--border-dim);
+}
+
+/* === CHEVRON === */
+.item-toggle {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+}
+
+.item-toggle:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.item-toggle svg {
+  width: 14px;
+  height: 14px;
+  color: var(--chevron-color);
+  transition: transform 0.2s ease, color 0.15s;
+}
+
+.item-toggle.expanded svg {
+  transform: rotate(90deg);
+  color: var(--chevron-active);
+}
+
+.item-toggle.leaf {
+  pointer-events: none;
+}
+
+.item-toggle.leaf svg {
+  width: 6px;
+  height: 6px;
+  color: var(--text-ghost);
+}
+
+/* === ITEM CONTENT === */
+.item-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding-top: 3px;
+}
+
+.item-text {
+  flex: 1;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.item-text.completed {
+  text-decoration: line-through;
+  color: var(--text-tertiary);
+  text-decoration-color: var(--text-ghost);
+}
+
+.item-note {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  font-style: italic;
+  font-weight: 300;
+}
+
+/* === INLINE BADGES & TAGS === */
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.15s;
+  padding-top: 2px;
+}
+
+.item-row:hover .item-actions,
+.item-row.focused .item-actions {
+  opacity: 1;
+}
+
+.tag {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 3px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.tag-priority {
+  background: rgba(212, 106, 106, 0.15);
+  color: var(--accent-red);
+}
+
+.tag-context {
+  background: rgba(106, 143, 212, 0.12);
+  color: var(--accent-blue);
+}
+
+.tag-done {
+  background: rgba(122, 189, 126, 0.12);
+  color: var(--accent-green);
+}
+
+.item-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-ghost);
+  background: var(--bg-raised);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* === CHECKBOX === */
+.item-checkbox {
+  width: 16px;
+  height: 16px;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 3px;
+  flex-shrink: 0;
+  margin-top: 4px;
+  margin-right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.item-checkbox:hover {
+  border-color: var(--text-tertiary);
+}
+
+.item-checkbox.checked {
+  background: var(--accent-warm);
+  border-color: var(--accent-warm);
+}
+
+.item-checkbox.checked svg {
+  color: var(--bg-deep);
+}
+
+/* === SHORTCUTS FOOTER === */
+.shortcuts-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(14, 14, 16, 0.94);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid var(--border-dim);
+  padding: 10px 24px;
+  z-index: 100;
+}
+
+.shortcuts-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.shortcut-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.shortcut-group kbd {
+  margin-right: 2px;
+}
+
+.shortcuts-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border-dim);
+}
+
+/* === CONTEXT MENU (for show) === */
+.context-indicator {
+  position: absolute;
+  right: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 20px;
+  background: var(--accent-warm);
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.item-row.focused .context-indicator {
+  opacity: 1;
+}
+
+/* === EMPTY STATE (add new) === */
+.add-item-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px;
+  margin-left: -10px;
+  color: var(--text-ghost);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: background 0.15s, color 0.15s;
+  margin-top: 4px;
+}
+
+.add-item-hint:hover {
+  background: var(--bg-hover);
+  color: var(--text-tertiary);
+}
+
+.add-icon {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px dashed var(--text-ghost);
+  border-radius: 3px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* === LOADING ANIMATION (page entrance) === */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.outline > .outline-item {
+  animation: fadeInUp 0.35s ease both;
+}
+
+.outline > .outline-item:nth-child(1) { animation-delay: 0.04s; }
+.outline > .outline-item:nth-child(2) { animation-delay: 0.08s; }
+.outline > .outline-item:nth-child(3) { animation-delay: 0.12s; }
+.outline > .outline-item:nth-child(4) { animation-delay: 0.16s; }
+.outline > .outline-item:nth-child(5) { animation-delay: 0.20s; }
+.outline > .outline-item:nth-child(6) { animation-delay: 0.24s; }
+.outline > .outline-item:nth-child(7) { animation-delay: 0.28s; }
+.outline > .outline-item:nth-child(8) { animation-delay: 0.32s; }
+
+.list-header { animation: fadeInUp 0.3s ease both; }
+
+/* === FOCUS PULSE (subtle) === */
+@keyframes focusPulse {
+  0%, 100% { box-shadow: var(--focus-glow); }
+  50% { box-shadow: 0 0 0 1px #d4956a40, 0 0 24px #d4956a10, 0 2px 12px #00000040; }
+}
+
+.item-row.focused {
+  animation: focusPulse 3s ease-in-out infinite;
+}
+
+/* === SCROLLBAR === */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover { background: #3a3a44; }
+
+::selection {
+  background: var(--accent-warm);
+  color: var(--bg-deep);
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="logo">
+      <div class="logo-icon"></div>
+      VistaNest
+    </div>
+
+    <div class="breadcrumb">
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-item">Projects</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-item breadcrumb-current">Product Roadmap Q2</span>
+    </div>
+
+    <div class="topbar-spacer"></div>
+
+    <div class="search-box">
+      <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="search-input" type="text" placeholder="Search items...">
+      <kbd>/</kbd>
+    </div>
+
+    <div class="topbar-actions">
+      <button class="topbar-btn" title="Undo">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+      </button>
+      <button class="topbar-btn" title="View options">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="main">
+  <div class="content">
+
+    <div class="list-header">
+      <h1 class="list-title">Product Roadmap Q2</h1>
+      <div class="list-meta">
+        <span class="list-meta-item">24 items</span>
+        <span class="list-meta-dot"></span>
+        <span class="list-meta-item">6 completed</span>
+        <span class="list-meta-dot"></span>
+        <span class="list-meta-item">Updated 2 hours ago</span>
+      </div>
+    </div>
+
+    <ul class="outline" id="outline"></ul>
+
+    <div class="add-item-hint">
+      <div class="add-icon">+</div>
+      Add item <kbd>O</kbd>
+    </div>
+
+  </div>
+</main>
+
+<!-- SHORTCUTS BAR -->
+<footer class="shortcuts-bar">
+  <div class="shortcuts-inner">
+    <div class="shortcut-group"><kbd>J</kbd><kbd>K</kbd> navigate</div>
+    <div class="shortcuts-sep"></div>
+    <div class="shortcut-group"><kbd>Enter</kbd> edit</div>
+    <div class="shortcuts-sep"></div>
+    <div class="shortcut-group"><kbd>Tab</kbd> indent</div>
+    <div class="shortcuts-sep"></div>
+    <div class="shortcut-group"><kbd>Space</kbd> check</div>
+    <div class="shortcuts-sep"></div>
+    <div class="shortcut-group"><kbd>O</kbd> new below</div>
+    <div class="shortcuts-sep"></div>
+    <div class="shortcut-group"><kbd>Ctrl</kbd>+<kbd>&uarr;</kbd><kbd>&darr;</kbd> move</div>
+    <div class="shortcuts-sep"></div>
+    <div class="shortcut-group"><kbd>?</kbd> all shortcuts</div>
+  </div>
+</footer>
+
+<script>
+const DATA = [
+  {
+    text: "Authentication & user onboarding",
+    expanded: true,
+    children: [
+      { text: "Implement OAuth2 with Google and GitHub", completed: true, tag: "done" },
+      { text: "Design onboarding wizard flow", note: "3-step progressive disclosure", tag: "context", tagLabel: "design" },
+      { text: "Add SSO support for enterprise accounts", tag: "priority", tagLabel: "P1" },
+      { text: "Email verification and recovery flow" },
+    ]
+  },
+  {
+    text: "Keyboard navigation system",
+    expanded: true,
+    focused: true,
+    children: [
+      { text: "Vim-style J/K movement between items", completed: true, tag: "done" },
+      { text: "Tab/Shift-Tab for indent/outdent", completed: true, tag: "done" },
+      { text: "Drag-free reordering with Ctrl+Arrow keys" },
+      { text: "Focus management and scroll-into-view" },
+      { text: "Customizable keybinding overrides", note: "User-configurable via settings JSON" },
+    ]
+  },
+  {
+    text: "Real-time collaboration",
+    expanded: false,
+    count: 7,
+    children: []
+  },
+  {
+    text: "Export and integrations",
+    expanded: true,
+    children: [
+      { text: "Markdown export with full hierarchy" },
+      { text: "OPML import/export for interoperability", tag: "context", tagLabel: "v2.1" },
+      {
+        text: "API endpoints for external tools",
+        expanded: true,
+        children: [
+          { text: "REST API with token authentication" },
+          { text: "Webhook support for item changes", tag: "priority", tagLabel: "P2" },
+        ]
+      },
+    ]
+  },
+  {
+    text: "Performance and infrastructure",
+    expanded: false,
+    count: 5,
+    children: []
+  },
+  {
+    text: "Search and filtering",
+    expanded: true,
+    children: [
+      { text: "Full-text search across all lists", completed: true, tag: "done" },
+      { text: "Filter by tags, status, and assignee" },
+      { text: "Saved search queries" },
+    ]
+  },
+  {
+    text: "Mobile responsive layout",
+    tag: "priority",
+    tagLabel: "P1",
+    expanded: false,
+    count: 4,
+    children: []
+  },
+  {
+    text: "Accessibility audit and WCAG compliance",
+    note: "Target AA level, engage external auditor",
+    children: []
+  },
+];
+
+const chevronSVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>';
+const dotSVG = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>';
+const checkSVG = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+function renderItem(item, depth) {
+  const hasChildren = (item.children && item.children.length > 0) || item.count;
+  const isExpanded = item.expanded;
+  const isLeaf = !hasChildren;
+
+  let toggleClass = isLeaf ? 'item-toggle leaf' : ('item-toggle' + (isExpanded ? ' expanded' : ''));
+  let toggleIcon = isLeaf ? dotSVG : chevronSVG;
+
+  let tagHTML = '';
+  if (item.tag === 'priority') tagHTML = '<span class="tag tag-priority">' + item.tagLabel + '</span>';
+  else if (item.tag === 'context') tagHTML = '<span class="tag tag-context">' + item.tagLabel + '</span>';
+  else if (item.tag === 'done') tagHTML = '<span class="tag tag-done">done</span>';
+
+  let countHTML = '';
+  if (item.count && !isExpanded) countHTML = '<span class="item-count">' + item.count + '</span>';
+
+  let checkboxHTML = '';
+  if (isLeaf || item.completed) {
+    let chkClass = item.completed ? 'item-checkbox checked' : 'item-checkbox';
+    let chkInner = item.completed ? checkSVG : '';
+    checkboxHTML = '<div class="' + chkClass + '">' + chkInner + '</div>';
+  }
+
+  let textClass = item.completed ? 'item-text completed' : 'item-text';
+  let noteHTML = item.note ? '<div class="item-note">' + item.note + '</div>' : '';
+
+  let focusedClass = item.focused ? ' focused' : '';
+  let contextHTML = item.focused ? '<div class="context-indicator"></div>' : '';
+
+  let childrenHTML = '';
+  if (hasChildren && isExpanded && item.children.length > 0) {
+    let childItems = item.children.map(function(child) { return renderItem(child, depth + 1); }).join('');
+    childrenHTML = '<ul class="outline-children">' + childItems + '</ul>';
+  }
+
+  return '<li class="outline-item">' +
+    '<div class="item-row' + focusedClass + '">' +
+      '<div class="' + toggleClass + '">' + toggleIcon + '</div>' +
+      '<div class="item-content">' +
+        checkboxHTML +
+        '<div style="flex:1;min-width:0">' +
+          '<div class="' + textClass + '">' + item.text + '</div>' +
+          noteHTML +
+        '</div>' +
+        '<div class="item-actions">' +
+          tagHTML +
+          countHTML +
+        '</div>' +
+      '</div>' +
+      contextHTML +
+    '</div>' +
+    childrenHTML +
+  '</li>';
+}
+
+var outlineEl = document.getElementById('outline');
+outlineEl.innerHTML = DATA.map(function(item) { return renderItem(item, 0); }).join('');
+
+// Toggle expand/collapse
+outlineEl.addEventListener('click', function(e) {
+  var toggle = e.target.closest('.item-toggle:not(.leaf)');
+  if (!toggle) return;
+
+  toggle.classList.toggle('expanded');
+  var li = toggle.closest('.outline-item');
+  var children = li.querySelector('.outline-children');
+  if (children) {
+    children.style.display = children.style.display === 'none' ? '' : 'none';
+  }
+});
+
+// Keyboard navigation
+var allRows = Array.from(document.querySelectorAll('.item-row'));
+var focusIndex = allRows.findIndex(function(r) { return r.classList.contains('focused'); });
+if (focusIndex === -1) focusIndex = 0;
+
+function setFocus(idx) {
+  if (idx < 0 || idx >= allRows.length) return;
+  allRows[focusIndex].classList.remove('focused');
+  var indicator = allRows[focusIndex].querySelector('.context-indicator');
+  if (indicator) indicator.remove();
+
+  focusIndex = idx;
+  allRows[focusIndex].classList.add('focused');
+  var ci = document.createElement('div');
+  ci.className = 'context-indicator';
+  allRows[focusIndex].appendChild(ci);
+  allRows[focusIndex].scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.target.tagName === 'INPUT') return;
+
+  if (e.key === 'j' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    setFocus(focusIndex + 1);
+  } else if (e.key === 'k' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    setFocus(focusIndex - 1);
+  } else if (e.key === '/' ) {
+    e.preventDefault();
+    document.querySelector('.search-input').focus();
+  }
+});
+
+document.querySelector('.search-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    e.target.blur();
+  }
+});
+</script>
+
+</body>
+</html>
