@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import type { VisibleItem } from '../store/outline-store'
 import { useOutlineStore } from '../store/outline-store'
 
@@ -6,6 +6,62 @@ interface OutlineItemProps {
   visibleItem: VisibleItem
   isFocused: boolean
   isEditing: boolean
+}
+
+/** Parse simple markdown: ## headings, **bold**, `code`, *italic* */
+function renderMarkdown(text: string): { element: React.ReactNode; isHeading: boolean } {
+  // Check for heading prefix
+  const h1Match = text.match(/^#\s+(.+)$/)
+  const h2Match = text.match(/^##\s+(.+)$/)
+  const h3Match = text.match(/^###\s+(.+)$/)
+
+  if (h1Match) return { element: <span className="md-h1">{inlineMarkdown(h1Match[1])}</span>, isHeading: true }
+  if (h2Match) return { element: <span className="md-h2">{inlineMarkdown(h2Match[1])}</span>, isHeading: true }
+  if (h3Match) return { element: <span className="md-h3">{inlineMarkdown(h3Match[1])}</span>, isHeading: true }
+
+  return { element: inlineMarkdown(text), isHeading: false }
+}
+
+/** Parse inline markdown: **bold**, *italic*, `code` */
+function inlineMarkdown(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = []
+  let remaining = text
+  let key = 0
+
+  while (remaining.length > 0) {
+    // Bold: **text**
+    const boldMatch = remaining.match(/^(.*?)\*\*(.+?)\*\*(.*)$/)
+    if (boldMatch) {
+      if (boldMatch[1]) parts.push(boldMatch[1])
+      parts.push(<strong key={key++}>{boldMatch[2]}</strong>)
+      remaining = boldMatch[3]
+      continue
+    }
+
+    // Italic: *text*
+    const italicMatch = remaining.match(/^(.*?)\*(.+?)\*(.*)$/)
+    if (italicMatch) {
+      if (italicMatch[1]) parts.push(italicMatch[1])
+      parts.push(<em key={key++}>{italicMatch[2]}</em>)
+      remaining = italicMatch[3]
+      continue
+    }
+
+    // Code: `text`
+    const codeMatch = remaining.match(/^(.*?)`(.+?)`(.*)$/)
+    if (codeMatch) {
+      if (codeMatch[1]) parts.push(codeMatch[1])
+      parts.push(<code key={key++} className="md-code">{codeMatch[2]}</code>)
+      remaining = codeMatch[3]
+      continue
+    }
+
+    // No more matches
+    parts.push(remaining)
+    break
+  }
+
+  return parts.length === 1 ? parts[0] : <>{parts}</>
 }
 
 export const OutlineItem = memo(function OutlineItem({
@@ -23,14 +79,10 @@ export const OutlineItem = memo(function OutlineItem({
   const inputRef = useRef<HTMLInputElement>(null)
   const [editText, setEditText] = useState(item.text)
 
-  // Sync local edit text when entering edit mode
   useEffect(() => {
-    if (isEditing) {
-      setEditText(item.text)
-    }
+    if (isEditing) setEditText(item.text)
   }, [isEditing, item.text])
 
-  // Auto-focus the input when entering edit mode
   useEffect(() => {
     if (isEditing && inputRef.current) {
       inputRef.current.focus()
@@ -54,6 +106,7 @@ export const OutlineItem = memo(function OutlineItem({
     startEditing(item.id)
   }, [startEditing, item.id])
 
+
   const handleEditKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
@@ -71,11 +124,11 @@ export const OutlineItem = memo(function OutlineItem({
     updateItemText(item.id, editText)
   }, [item.id, editText, updateItemText])
 
-  const isTopLevel = depth === 0
+  const rendered = useMemo(() => renderMarkdown(item.text), [item.text])
 
   const rowClasses = [
     'outline-item-row',
-    'flex items-start gap-1 rounded-md cursor-default transition-colors relative',
+    'flex items-start gap-1 rounded-md cursor-default relative',
     isFocused && 'is-focused',
   ]
     .filter(Boolean)
@@ -89,8 +142,8 @@ export const OutlineItem = memo(function OutlineItem({
       style={{
         paddingLeft: depth * 28 + 8,
         paddingRight: 8,
-        paddingTop: isTopLevel ? 12 : 7,
-        paddingBottom: isTopLevel ? 12 : 7,
+        paddingTop: rendered.isHeading ? 12 : 7,
+        paddingBottom: rendered.isHeading ? 12 : 7,
       }}
     >
       {/* Chevron toggle */}
@@ -98,7 +151,7 @@ export const OutlineItem = memo(function OutlineItem({
         onClick={hasChildren ? handleToggle : undefined}
         className="chevron-toggle w-6 flex items-center justify-center shrink-0 border-none rounded p-0 transition-colors"
         style={{
-          height: isTopLevel ? 32 : 28,
+          height: 28,
           cursor: hasChildren ? 'pointer' : 'default',
           visibility: hasChildren ? 'visible' : 'hidden',
         }}
@@ -128,11 +181,9 @@ export const OutlineItem = memo(function OutlineItem({
           onBlur={handleEditBlur}
           className="flex-1 outline-none rounded px-1"
           style={{
-            fontSize: isTopLevel ? 24 : 16,
-            fontWeight: isTopLevel ? 500 : 400,
-            lineHeight: isTopLevel ? 1.4 : 1.75,
-            letterSpacing: isTopLevel ? '-0.02em' : '-0.008em',
-            minHeight: isTopLevel ? 34 : 28,
+            fontSize: 16,
+            lineHeight: 1.75,
+            minHeight: 28,
             fontFamily: 'var(--font-body)',
             color: 'var(--text-primary)',
             background: 'var(--bg-raised)',
@@ -143,24 +194,20 @@ export const OutlineItem = memo(function OutlineItem({
         <span
           className="flex-1 flex items-baseline flex-wrap gap-2"
           style={{
-            fontSize: isTopLevel ? 24 : 16,
-            fontWeight: isTopLevel ? 500 : 400,
-            lineHeight: isTopLevel ? 1.4 : 1.75,
-            letterSpacing: isTopLevel ? '-0.02em' : '-0.008em',
-            minHeight: isTopLevel ? 34 : 28,
+            fontSize: 16,
+            lineHeight: 1.75,
+            minHeight: 28,
             color: item.done ? 'var(--done-text)' : 'var(--text-primary)',
             textDecoration: item.done ? 'line-through' : undefined,
             textDecorationColor: item.done ? 'var(--done-line)' : undefined,
           }}
         >
-          {item.text}
+          {rendered.element}
 
-          {/* Kbd badges inline with text */}
           {item.tags?.map((tag) => (
             <InlineTag key={tag.label} label={tag.label} type={tag.type} />
           ))}
 
-          {/* Collapsed child count inline */}
           {item.collapsed && hasChildren && (
             <span
               style={{
@@ -175,7 +222,6 @@ export const OutlineItem = memo(function OutlineItem({
         </span>
       )}
 
-      {/* Note — below text, not inline */}
       {!isEditing && item.note && (
         <span
           className="text-sm font-light italic"

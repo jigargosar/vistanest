@@ -61,20 +61,13 @@ export function OutlineTree() {
 
         {/* Outline items */}
         <div className="flex flex-col gap-px">
-          {visibleItems.map((visItem, index) => (
-            <div
+          {visibleItems.map((visItem) => (
+            <OutlineItem
               key={visItem.item.id}
-              style={{
-                animation: 'fadeInUp 0.3s ease-out both',
-                animationDelay: `${index * 0.02}s`,
-              }}
-            >
-              <OutlineItem
-                visibleItem={visItem}
-                isFocused={visItem.item.id === focusedId}
-                isEditing={visItem.item.id === editingId}
-              />
-            </div>
+              visibleItem={visItem}
+              isFocused={visItem.item.id === focusedId}
+              isEditing={visItem.item.id === editingId}
+            />
           ))}
         </div>
       </div>
