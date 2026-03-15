@@ -6,6 +6,7 @@ import { OutlineItem } from './OutlineItem'
 export function OutlineTree() {
   const items = useOutlineStore((s) => s.items)
   const focusedId = useOutlineStore((s) => s.focusedId)
+  const editingId = useOutlineStore((s) => s.editingId)
   const visibleItems = useMemo(() => selectVisibleItems({ items }), [items])
 
   const totalItems = items.length
@@ -71,6 +72,7 @@ export function OutlineTree() {
               <OutlineItem
                 visibleItem={visItem}
                 isFocused={visItem.item.id === focusedId}
+                isEditing={visItem.item.id === editingId}
               />
             </div>
           ))}

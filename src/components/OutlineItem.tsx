@@ -1,19 +1,42 @@
-import { memo, useCallback } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import type { VisibleItem } from '../store/outline-store'
 import { useOutlineStore } from '../store/outline-store'
 
 interface OutlineItemProps {
   visibleItem: VisibleItem
   isFocused: boolean
+  isEditing: boolean
 }
 
 export const OutlineItem = memo(function OutlineItem({
   visibleItem,
   isFocused,
+  isEditing,
 }: OutlineItemProps) {
   const { item, depth, childCount, hasChildren } = visibleItem
   const toggleCollapse = useOutlineStore((s) => s.toggleCollapse)
   const setFocused = useOutlineStore((s) => s.setFocused)
+  const startEditing = useOutlineStore((s) => s.startEditing)
+  const stopEditing = useOutlineStore((s) => s.stopEditing)
+  const updateItemText = useOutlineStore((s) => s.updateItemText)
+
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [editText, setEditText] = useState(item.text)
+
+  // Sync local edit text when entering edit mode
+  useEffect(() => {
+    if (isEditing) {
+      setEditText(item.text)
+    }
+  }, [isEditing, item.text])
+
+  // Auto-focus the input when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditing])
 
   const handleToggle = useCallback(
     (e: React.MouseEvent) => {
@@ -26,6 +49,27 @@ export const OutlineItem = memo(function OutlineItem({
   const handleRowClick = useCallback(() => {
     setFocused(item.id)
   }, [setFocused, item.id])
+
+  const handleDoubleClick = useCallback(() => {
+    startEditing(item.id)
+  }, [startEditing, item.id])
+
+  const handleEditKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        updateItemText(item.id, editText)
+      } else if (e.key === 'Escape') {
+        e.preventDefault()
+        stopEditing()
+      }
+    },
+    [item.id, editText, updateItemText, stopEditing],
+  )
+
+  const handleEditBlur = useCallback(() => {
+    updateItemText(item.id, editText)
+  }, [item.id, editText, updateItemText])
 
   const isTopLevel = depth === 0
 
@@ -41,6 +85,7 @@ export const OutlineItem = memo(function OutlineItem({
     <div
       className={rowClasses}
       onClick={handleRowClick}
+      onDoubleClick={handleDoubleClick}
       style={{
         paddingLeft: depth * 28 + 8,
         paddingRight: 8,
@@ -72,43 +117,66 @@ export const OutlineItem = memo(function OutlineItem({
         </svg>
       </button>
 
-      {/* Text content */}
-      <span
-        className="flex-1 flex items-baseline flex-wrap gap-2"
-        style={{
-          fontSize: isTopLevel ? 24 : 16,
-          fontWeight: isTopLevel ? 500 : 400,
-          lineHeight: isTopLevel ? 1.4 : 1.75,
-          letterSpacing: isTopLevel ? '-0.02em' : '-0.008em',
-          minHeight: isTopLevel ? 34 : 28,
-          color: item.done ? 'var(--done-text)' : 'var(--text-primary)',
-          textDecoration: item.done ? 'line-through' : undefined,
-          textDecorationColor: item.done ? 'var(--done-line)' : undefined,
-        }}
-      >
-        {item.text}
+      {/* Text content or edit input */}
+      {isEditing ? (
+        <input
+          ref={inputRef}
+          type="text"
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
+          onKeyDown={handleEditKeyDown}
+          onBlur={handleEditBlur}
+          className="flex-1 outline-none rounded px-1"
+          style={{
+            fontSize: isTopLevel ? 24 : 16,
+            fontWeight: isTopLevel ? 500 : 400,
+            lineHeight: isTopLevel ? 1.4 : 1.75,
+            letterSpacing: isTopLevel ? '-0.02em' : '-0.008em',
+            minHeight: isTopLevel ? 34 : 28,
+            fontFamily: 'var(--font-body)',
+            color: 'var(--text-primary)',
+            background: 'var(--bg-raised)',
+            border: '1px solid var(--accent-border)',
+          }}
+        />
+      ) : (
+        <span
+          className="flex-1 flex items-baseline flex-wrap gap-2"
+          style={{
+            fontSize: isTopLevel ? 24 : 16,
+            fontWeight: isTopLevel ? 500 : 400,
+            lineHeight: isTopLevel ? 1.4 : 1.75,
+            letterSpacing: isTopLevel ? '-0.02em' : '-0.008em',
+            minHeight: isTopLevel ? 34 : 28,
+            color: item.done ? 'var(--done-text)' : 'var(--text-primary)',
+            textDecoration: item.done ? 'line-through' : undefined,
+            textDecorationColor: item.done ? 'var(--done-line)' : undefined,
+          }}
+        >
+          {item.text}
 
-        {/* Kbd badges inline with text */}
-        {item.tags?.map((tag) => (
-          <InlineTag key={tag.label} label={tag.label} type={tag.type} />
-        ))}
+          {/* Kbd badges inline with text */}
+          {item.tags?.map((tag) => (
+            <InlineTag key={tag.label} label={tag.label} type={tag.type} />
+          ))}
 
-        {/* Collapsed child count inline */}
-        {item.collapsed && hasChildren && (
-          <span
-            style={{
-              fontSize: 11,
-              fontFamily: 'var(--font-mono)',
-              color: 'var(--text-ghost)',
-            }}
-          >
-            {childCount} items
-          </span>
-        )}
-      </span>
+          {/* Collapsed child count inline */}
+          {item.collapsed && hasChildren && (
+            <span
+              style={{
+                fontSize: 11,
+                fontFamily: 'var(--font-mono)',
+                color: 'var(--text-ghost)',
+              }}
+            >
+              {childCount} items
+            </span>
+          )}
+        </span>
+      )}
 
       {/* Note — below text, not inline */}
-      {item.note && (
+      {!isEditing && item.note && (
         <span
           className="text-sm font-light italic"
           style={{ color: 'var(--text-secondary)' }}
