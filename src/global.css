@@ -1,16 +1,13 @@
 @import "tailwindcss";
 
-/* === BASE RESET === */
-*,
-*::before,
-*::after {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+/* Color variables are set by the theme store at runtime. */
+/* Layout and typography constants live here — they don't change per theme. */
+:root {
+  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --content-width: 720px;
+  --topbar-h: 52px;
 }
-
-/* CSS variables are set by the theme store at runtime.
-   No defaults here — theme-store.ts applies midnight on init. */
 
 html {
   font-size: 16px;

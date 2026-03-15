@@ -12,10 +12,10 @@ export function OutlineTree() {
 
   return (
     <main
-      className="px-6 pb-30"
+      className="pb-30"
       style={{ marginTop: 'var(--topbar-h)', paddingTop: 40 }}
     >
-      <div className="mx-auto px-6" style={{ maxWidth: 'var(--content-width)' }}>
+      <div className="mx-auto px-8" style={{ maxWidth: 'calc(var(--content-width) + 64px)' }}>
         {/* List header */}
         <div
           className="mb-9 pb-5"
