@@ -1,0 +1,1312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VistaNest — Hierarchical Outliner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-deep: #0c0c0e;
+  --bg-base: #111114;
+  --bg-raised: #18181c;
+  --bg-surface: #1e1e23;
+  --bg-hover: #24242b;
+  --bg-active: #2a2a33;
+
+  --border-dim: #2a2a33;
+  --border-mid: #3a3a44;
+
+  --text-primary: #d8d5cf;
+  --text-secondary: #8a8780;
+  --text-dim: #5a5854;
+  --text-ghost: #3a3834;
+
+  --amber: #d4a544;
+  --amber-dim: #b8922e;
+  --amber-glow: #d4a54422;
+  --amber-bright: #e8bc5a;
+
+  --red-soft: #c45c5c;
+  --green-soft: #5caa6c;
+  --blue-soft: #5c8cc4;
+  --purple-soft: #8a6cc4;
+
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+  --font-body: 'DM Sans', system-ui, sans-serif;
+
+  --indent: 28px;
+  --item-height: 34px;
+  --sidebar-width: 260px;
+  --topbar-height: 44px;
+}
+
+html {
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  height: 100vh;
+  overflow: hidden;
+  cursor: default;
+  position: relative;
+}
+
+/* ══════ Noise Overlay ══════ */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  opacity: 0.025;
+  pointer-events: none;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ══════ Scanline Effect ══════ */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+}
+
+/* ══════ Layout ══════ */
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: var(--topbar-height) 1fr;
+  height: 100vh;
+}
+
+/* ══════ Topbar ══════ */
+.topbar {
+  grid-column: 1 / -1;
+  background: var(--bg-base);
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 16px;
+  position: relative;
+  z-index: 100;
+}
+
+.topbar-logo {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: -0.5px;
+  color: var(--amber);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(var(--sidebar-width) - 32px);
+  flex-shrink: 0;
+}
+
+.topbar-logo .logo-icon {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--amber);
+  border-radius: 4px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbar-logo .logo-icon::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--amber-dim);
+  border-radius: 2px;
+}
+
+.topbar-breadcrumb {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.topbar-breadcrumb span {
+  color: var(--text-secondary);
+}
+
+.topbar-breadcrumb .sep {
+  color: var(--text-ghost);
+  font-size: 10px;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.topbar-btn {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-dim);
+  background: none;
+  border: 1px solid transparent;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.topbar-btn:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-dim);
+  background: var(--bg-raised);
+}
+
+.topbar-btn kbd {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 1px 4px;
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  color: var(--text-ghost);
+  background: var(--bg-deep);
+}
+
+/* ══════ Sidebar ══════ */
+.sidebar {
+  background: var(--bg-base);
+  border-right: 1px solid var(--border-dim);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-section {
+  padding: 12px 12px 4px;
+}
+
+.sidebar-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-ghost);
+  padding: 0 8px;
+  margin-bottom: 6px;
+}
+
+.sidebar-items {
+  list-style: none;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.12s;
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  position: relative;
+}
+
+.sidebar-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sidebar-item.active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+}
+
+.sidebar-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 16px;
+  background: var(--amber);
+  border-radius: 1px;
+}
+
+.sidebar-item .item-icon {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  width: 18px;
+  text-align: center;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.sidebar-item.active .item-icon {
+  color: var(--amber-dim);
+}
+
+.sidebar-item .item-count {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-ghost);
+}
+
+.sidebar-sep {
+  height: 1px;
+  background: var(--border-dim);
+  margin: 4px 20px;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--border-dim);
+}
+
+.sidebar-footer-info {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-ghost);
+  padding: 4px 8px;
+  line-height: 1.6;
+}
+
+.sidebar-footer-info kbd {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 1px 5px;
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  background: var(--bg-deep);
+  color: var(--text-dim);
+}
+
+/* ══════ Main Content ══════ */
+.main {
+  background: var(--bg-deep);
+  overflow-y: auto;
+  position: relative;
+}
+
+.main-inner {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 32px 40px 120px;
+}
+
+/* ══════ List Header ══════ */
+.list-header {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.list-title {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.list-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
+.list-meta .meta-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.list-meta .meta-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--amber-dim);
+}
+
+/* ══════ Outliner Tree ══════ */
+.outliner {
+  position: relative;
+}
+
+.outline-item {
+  position: relative;
+  animation: itemSlideIn 0.3s ease both;
+}
+
+@keyframes itemSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.outline-item:nth-child(1) { animation-delay: 0.02s; }
+.outline-item:nth-child(2) { animation-delay: 0.04s; }
+.outline-item:nth-child(3) { animation-delay: 0.06s; }
+.outline-item:nth-child(4) { animation-delay: 0.08s; }
+.outline-item:nth-child(5) { animation-delay: 0.1s; }
+
+.outline-row {
+  display: flex;
+  align-items: flex-start;
+  min-height: var(--item-height);
+  padding: 3px 0;
+  border-radius: 4px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.outline-row:hover {
+  background: var(--bg-raised);
+}
+
+.outline-row.focused {
+  background: var(--bg-surface);
+  box-shadow: inset 2px 0 0 var(--amber);
+}
+
+.outline-row.focused .outline-text {
+  color: var(--text-primary);
+}
+
+/* Indent guides */
+.outline-indent {
+  display: flex;
+  flex-shrink: 0;
+  height: 100%;
+  min-height: var(--item-height);
+  align-self: stretch;
+}
+
+.indent-level {
+  width: var(--indent);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.indent-level::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--border-dim);
+  opacity: 0.5;
+}
+
+/* Bullet / Toggle */
+.outline-bullet-wrap {
+  width: 28px;
+  height: var(--item-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.outline-bullet {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: all 0.15s;
+  position: relative;
+  z-index: 1;
+}
+
+.outline-row:hover .outline-bullet {
+  background: var(--text-secondary);
+}
+
+.outline-row.focused .outline-bullet {
+  background: var(--amber);
+  box-shadow: 0 0 8px var(--amber-glow);
+}
+
+.outline-bullet.has-children {
+  width: 0;
+  height: 0;
+  background: none;
+  border-radius: 0;
+  border-left: 5px solid var(--text-dim);
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  transition: all 0.15s;
+}
+
+.outline-bullet.has-children.expanded {
+  transform: rotate(90deg);
+}
+
+.outline-row:hover .outline-bullet.has-children {
+  border-left-color: var(--text-secondary);
+}
+
+.outline-row.focused .outline-bullet.has-children {
+  border-left-color: var(--amber);
+}
+
+/* Text content */
+.outline-text {
+  flex: 1;
+  font-size: 13.5px;
+  line-height: var(--item-height);
+  color: var(--text-primary);
+  min-width: 0;
+  padding-right: 12px;
+}
+
+.outline-text.completed {
+  text-decoration: line-through;
+  color: var(--text-dim);
+  text-decoration-color: var(--text-ghost);
+}
+
+/* Checkbox */
+.outline-checkbox {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--border-mid);
+  border-radius: 3px;
+  margin-right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+  transition: all 0.15s;
+}
+
+.outline-checkbox.checked {
+  background: var(--amber-dim);
+  border-color: var(--amber-dim);
+}
+
+.outline-checkbox.checked::after {
+  content: '';
+  width: 7px;
+  height: 4px;
+  border-left: 1.5px solid var(--bg-deep);
+  border-bottom: 1.5px solid var(--bg-deep);
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+/* Inline tag */
+.tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+.tag-amber {
+  background: var(--amber-glow);
+  color: var(--amber);
+  border: 1px solid var(--amber-dim);
+}
+
+.tag-red {
+  background: rgba(196, 92, 92, 0.1);
+  color: var(--red-soft);
+  border: 1px solid rgba(196, 92, 92, 0.25);
+}
+
+.tag-blue {
+  background: rgba(92, 140, 196, 0.1);
+  color: var(--blue-soft);
+  border: 1px solid rgba(92, 140, 196, 0.25);
+}
+
+.tag-green {
+  background: rgba(92, 170, 108, 0.1);
+  color: var(--green-soft);
+  border: 1px solid rgba(92, 170, 108, 0.25);
+}
+
+.tag-purple {
+  background: rgba(138, 108, 196, 0.1);
+  color: var(--purple-soft);
+  border: 1px solid rgba(138, 108, 196, 0.25);
+}
+
+/* Note / annotation */
+.outline-note {
+  font-size: 11.5px;
+  color: var(--text-dim);
+  padding: 2px 0 4px 0;
+  font-style: italic;
+  line-height: 1.5;
+}
+
+/* Children container */
+.outline-children {
+  position: relative;
+}
+
+/* ══════ Action Hints ══════ */
+.outline-row .row-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+  margin-right: 4px;
+  align-self: center;
+}
+
+.outline-row:hover .row-actions {
+  opacity: 1;
+}
+
+.row-action-btn {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-ghost);
+  padding: 2px 5px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: all 0.1s;
+}
+
+.row-action-btn:hover {
+  color: var(--text-dim);
+  background: var(--bg-hover);
+}
+
+/* ══════ Command Palette ══════ */
+.cmd-palette-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 120px;
+  backdrop-filter: blur(4px);
+  animation: overlayIn 0.15s ease;
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cmd-palette {
+  width: 520px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-mid);
+  border-radius: 10px;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  animation: paletteIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes paletteIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.cmd-input-wrap {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cmd-input-icon {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--amber-dim);
+}
+
+.cmd-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text-primary);
+  caret-color: var(--amber);
+}
+
+.cmd-input::placeholder {
+  color: var(--text-ghost);
+}
+
+.cmd-results {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.cmd-result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.cmd-result:hover, .cmd-result.selected {
+  background: var(--bg-active);
+}
+
+.cmd-result.selected {
+  box-shadow: inset 2px 0 0 var(--amber);
+}
+
+.cmd-result-icon {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-dim);
+  width: 20px;
+  text-align: center;
+}
+
+.cmd-result-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.cmd-result-kbd {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-ghost);
+  display: flex;
+  gap: 3px;
+}
+
+.cmd-result-kbd kbd {
+  font-family: var(--font-mono);
+  padding: 2px 6px;
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  background: var(--bg-deep);
+  font-size: 9.5px;
+}
+
+.cmd-footer {
+  padding: 8px 16px;
+  border-top: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-ghost);
+}
+
+.cmd-footer kbd {
+  font-family: var(--font-mono);
+  padding: 1px 5px;
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  background: var(--bg-deep);
+  font-size: 9px;
+}
+
+/* ══════ Keyboard Shortcut Bar ══════ */
+.shortcut-bar {
+  position: fixed;
+  bottom: 0;
+  left: var(--sidebar-width);
+  right: 0;
+  background: var(--bg-base);
+  border-top: 1px solid var(--border-dim);
+  padding: 6px 20px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  z-index: 50;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-ghost);
+}
+
+.shortcut-item kbd {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 1px 5px;
+  border: 1px solid var(--border-dim);
+  border-radius: 3px;
+  background: var(--bg-deep);
+  color: var(--text-dim);
+  min-width: 18px;
+  text-align: center;
+}
+
+.shortcut-item .shortcut-label {
+  color: var(--text-dim);
+}
+
+/* ══════ Cursor blink on focused item ══════ */
+.outline-row.focused .outline-text::after {
+  content: '';
+  display: inline-block;
+  width: 1.5px;
+  height: 14px;
+  background: var(--amber);
+  margin-left: 2px;
+  vertical-align: middle;
+  animation: cursorBlink 1s steps(1) infinite;
+}
+
+@keyframes cursorBlink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* ══════ Progress indicator on parent items ══════ */
+.progress-bar {
+  width: 40px;
+  height: 3px;
+  background: var(--bg-active);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-right: 8px;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s;
+}
+
+.progress-bar-fill.amber { background: var(--amber-dim); }
+.progress-bar-fill.green { background: var(--green-soft); }
+
+/* ══════ Scrollbar ══════ */
+.main::-webkit-scrollbar {
+  width: 6px;
+}
+
+.main::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.main::-webkit-scrollbar-thumb {
+  background: var(--border-dim);
+  border-radius: 3px;
+}
+
+.main::-webkit-scrollbar-thumb:hover {
+  background: var(--border-mid);
+}
+
+/* ══════ Selection flash ══════ */
+@keyframes selectFlash {
+  0% { background: var(--amber-glow); }
+  100% { background: transparent; }
+}
+
+/* ══════ Hidden palette toggle ══════ */
+.cmd-palette-overlay.hidden {
+  display: none;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ══════ Top Bar ══════ -->
+  <header class="topbar">
+    <div class="topbar-logo">
+      <div class="logo-icon"></div>
+      VistaNest
+    </div>
+    <div class="topbar-breadcrumb">
+      <span>Projects</span>
+      <span class="sep">/</span>
+      <span>Q1 2026 Roadmap</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="topbar-btn" id="togglePalette">
+        Commands <kbd>Ctrl+K</kbd>
+      </button>
+      <button class="topbar-btn">
+        Search <kbd>/</kbd>
+      </button>
+    </div>
+  </header>
+
+  <!-- ══════ Sidebar ══════ -->
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Inbox</div>
+      <ul class="sidebar-items">
+        <li class="sidebar-item">
+          <span class="item-icon">&gt;</span>
+          Quick Capture
+          <span class="item-count">3</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-sep"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Lists</div>
+      <ul class="sidebar-items" id="sidebarLists"></ul>
+    </div>
+
+    <div class="sidebar-sep"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Tags</div>
+      <ul class="sidebar-items" id="sidebarTags"></ul>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-info">
+        <kbd>?</kbd> Keyboard shortcuts<br>
+        <kbd>Ctrl+K</kbd> Command palette
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══════ Main Content ══════ -->
+  <main class="main">
+    <div class="main-inner">
+      <div class="list-header">
+        <h1 class="list-title">Q1 2026 Roadmap</h1>
+        <div class="list-meta">
+          <span class="meta-tag"><span class="meta-dot"></span> 4 of 12 done</span>
+          <span>Updated 2h ago</span>
+          <span>Shared with team</span>
+        </div>
+      </div>
+
+      <div class="outliner" id="outliner"></div>
+    </div>
+  </main>
+
+</div>
+
+<!-- ══════ Shortcut Bar ══════ -->
+<div class="shortcut-bar" id="shortcutBar"></div>
+
+<!-- ══════ Command Palette ══════ -->
+<div class="cmd-palette-overlay hidden" id="cmdOverlay">
+  <div class="cmd-palette">
+    <div class="cmd-input-wrap">
+      <span class="cmd-input-icon">&gt;</span>
+      <input class="cmd-input" id="cmdInput" type="text" placeholder="Type a command..." autofocus>
+    </div>
+    <div class="cmd-results" id="cmdResults"></div>
+    <div class="cmd-footer">
+      <span><kbd>Enter</kbd> select</span>
+      <span><kbd>Esc</kbd> close</span>
+      <span style="margin-left: auto;"><kbd>Tab</kbd> autocomplete</span>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  // ══════ Sidebar Lists Data ══════
+  const sidebarLists = [
+    { name: 'Q1 2026 Roadmap', icon: '#', count: 12, active: true },
+    { name: 'Backend Architecture', icon: '#', count: 8, active: false },
+    { name: 'Design System v3', icon: '#', count: 23, active: false },
+    { name: 'Sprint 14 Tasks', icon: '#', count: 6, active: false },
+    { name: 'Meeting Notes', icon: '#', count: 41, active: false },
+    { name: 'Reading List', icon: '#', count: 17, active: false },
+  ];
+
+  const sidebarTags = [
+    { name: 'urgent', icon: '!', count: 4, color: 'var(--red-soft)' },
+    { name: 'review', icon: '@', count: 7, color: 'var(--blue-soft)' },
+    { name: 'blocked', icon: '~', count: 2, color: 'var(--amber)' },
+    { name: 'idea', icon: '*', count: 11, color: 'var(--purple-soft)' },
+  ];
+
+  // ══════ Outline Data ══════
+  const outlineData = [
+    {
+      text: 'Infrastructure & Platform',
+      tag: { text: 'in-progress', cls: 'tag-amber' },
+      progress: { pct: 40, cls: 'amber' },
+      expanded: true,
+      children: [
+        {
+          text: 'Migrate to multi-region deployment',
+          tag: { text: 'urgent', cls: 'tag-red' },
+          children: [
+            { text: 'Evaluate CDN providers (Cloudflare, Fastly)', checked: true },
+            { text: 'Set up Terraform modules for AWS regions', checked: true },
+            { text: 'Implement database replication strategy', checked: false },
+            { text: 'Load testing with simulated global traffic', checked: false },
+          ]
+        },
+        {
+          text: 'Kubernetes cluster hardening',
+          children: [
+            { text: 'Network policies for namespace isolation', checked: false },
+            { text: 'Pod security standards enforcement', checked: false },
+            { text: 'Audit logging pipeline', note: 'Using Fluentd + Loki stack', checked: false },
+          ]
+        },
+        { text: 'CI/CD pipeline optimization', tag: { text: 'review', cls: 'tag-blue' }, checked: false },
+      ]
+    },
+    {
+      text: 'Core Product Features',
+      progress: { pct: 25, cls: 'amber' },
+      expanded: true,
+      children: [
+        {
+          text: 'Real-time collaboration engine',
+          tag: { text: 'in-progress', cls: 'tag-amber' },
+          focused: true,
+          children: [
+            { text: 'CRDT-based document model', tag: { text: 'research', cls: 'tag-purple' }, checked: false },
+            { text: 'WebSocket connection management', checked: true },
+            { text: 'Presence indicators and cursors', checked: false },
+            { text: 'Conflict resolution UI', checked: false },
+          ]
+        },
+        {
+          text: 'Advanced search with filters',
+          children: [
+            { text: 'Full-text indexing service', checked: true },
+            { text: 'Filter syntax parser', note: 'Support: is:done, tag:x, due:<date', checked: false },
+            { text: 'Search results ranking algorithm', checked: false },
+          ]
+        },
+        { text: 'Offline mode with sync', checked: false },
+        { text: 'Export to Markdown / OPML', tag: { text: 'easy', cls: 'tag-green' }, checked: false },
+      ]
+    },
+    {
+      text: 'Design & UX Improvements',
+      progress: { pct: 60, cls: 'green' },
+      expanded: true,
+      children: [
+        { text: 'Dark theme refinement', tag: { text: 'done', cls: 'tag-green' }, checked: true },
+        { text: 'Keyboard shortcut discoverability', checked: true },
+        { text: 'Mobile responsive layout', checked: false },
+        { text: 'Drag-and-drop reordering', tag: { text: 'blocked', cls: 'tag-red' }, checked: false },
+      ]
+    },
+    {
+      text: 'Documentation & Onboarding',
+      progress: { pct: 0, cls: 'amber' },
+      expanded: false,
+      children: [
+        { text: 'Interactive tutorial flow', checked: false },
+        { text: 'API reference docs', checked: false },
+        { text: 'Video walkthroughs', checked: false },
+      ]
+    },
+  ];
+
+  // ══════ Command Palette Data ══════
+  const commands = [
+    { icon: '+', text: 'New item', keys: ['Enter'] },
+    { icon: '>', text: 'Indent item', keys: ['Tab'] },
+    { icon: '<', text: 'Outdent item', keys: ['Shift', 'Tab'] },
+    { icon: 'x', text: 'Toggle checkbox', keys: ['Ctrl', 'Enter'] },
+    { icon: '^', text: 'Move item up', keys: ['Alt', 'Up'] },
+    { icon: 'v', text: 'Move item down', keys: ['Alt', 'Down'] },
+    { icon: '#', text: 'Add tag', keys: ['Ctrl', 'T'] },
+    { icon: '/', text: 'Search in list', keys: ['/'] },
+    { icon: 'z', text: 'Undo', keys: ['Ctrl', 'Z'] },
+    { icon: 'Z', text: 'Redo', keys: ['Ctrl', 'Shift', 'Z'] },
+    { icon: '~', text: 'Fold / Unfold', keys: ['Ctrl', '.'] },
+    { icon: '*', text: 'Focus on subtree', keys: ['Ctrl', 'Right'] },
+  ];
+
+  // ══════ Shortcut Bar Data ══════
+  const shortcuts = [
+    { key: 'j/k', label: 'navigate' },
+    { key: 'Enter', label: 'new item' },
+    { key: 'Tab', label: 'indent' },
+    { key: 'Ctrl+Enter', label: 'toggle done' },
+    { key: 'Alt+Up/Dn', label: 'move' },
+    { key: 'Ctrl+.', label: 'fold' },
+    { key: '?', label: 'help' },
+  ];
+
+  // ══════ Render Sidebar ══════
+  function renderSidebarLists() {
+    var el = document.getElementById('sidebarLists');
+    var html = '';
+    for (var i = 0; i < sidebarLists.length; i++) {
+      var item = sidebarLists[i];
+      html += '<li class="sidebar-item' + (item.active ? ' active' : '') + '">';
+      html += '<span class="item-icon">' + item.icon + '</span>';
+      html += item.name;
+      html += '<span class="item-count">' + item.count + '</span>';
+      html += '</li>';
+    }
+    el.innerHTML = html;
+  }
+
+  function renderSidebarTags() {
+    var el = document.getElementById('sidebarTags');
+    var html = '';
+    for (var i = 0; i < sidebarTags.length; i++) {
+      var item = sidebarTags[i];
+      html += '<li class="sidebar-item">';
+      html += '<span class="item-icon" style="color:' + item.color + '">' + item.icon + '</span>';
+      html += item.name;
+      html += '<span class="item-count">' + item.count + '</span>';
+      html += '</li>';
+    }
+    el.innerHTML = html;
+  }
+
+  // ══════ Render Outline ══════
+  function renderOutlineItem(item, depth) {
+    var html = '';
+    html += '<div class="outline-item" style="animation-delay:' + (depth * 0.02) + 's">';
+
+    // Main row
+    var rowClass = 'outline-row';
+    if (item.focused) rowClass += ' focused';
+    html += '<div class="' + rowClass + '">';
+
+    // Indent guides
+    html += '<div class="outline-indent">';
+    for (var d = 0; d < depth; d++) {
+      html += '<div class="indent-level"></div>';
+    }
+    html += '</div>';
+
+    // Bullet
+    var bulletClass = 'outline-bullet';
+    if (item.children && item.children.length > 0) {
+      bulletClass += ' has-children';
+      if (item.expanded !== false) bulletClass += ' expanded';
+    }
+    html += '<div class="outline-bullet-wrap"><div class="' + bulletClass + '"></div></div>';
+
+    // Text with optional checkbox
+    html += '<div class="outline-text' + (item.checked ? ' completed' : '') + '">';
+    if (typeof item.checked !== 'undefined') {
+      html += '<span class="outline-checkbox' + (item.checked ? ' checked' : '') + '"></span>';
+    }
+    html += item.text;
+    if (item.tag) {
+      html += ' <span class="tag ' + item.tag.cls + '">' + item.tag.text + '</span>';
+    }
+    html += '</div>';
+
+    // Progress bar for parent items
+    if (item.progress) {
+      html += '<div class="progress-bar"><div class="progress-bar-fill ' + item.progress.cls + '" style="width:' + item.progress.pct + '%"></div></div>';
+    }
+
+    // Row actions (hidden, visible on hover)
+    html += '<div class="row-actions">';
+    html += '<button class="row-action-btn">+</button>';
+    html += '<button class="row-action-btn">...</button>';
+    html += '</div>';
+
+    html += '</div>'; // end outline-row
+
+    // Note
+    if (item.note) {
+      html += '<div style="padding-left:' + (depth * 28 + 28) + 'px">';
+      html += '<div class="outline-note">' + item.note + '</div>';
+      html += '</div>';
+    }
+
+    // Children
+    if (item.children && item.children.length > 0 && item.expanded !== false) {
+      html += '<div class="outline-children">';
+      for (var c = 0; c < item.children.length; c++) {
+        html += renderOutlineItem(item.children[c], depth + 1);
+      }
+      html += '</div>';
+    }
+
+    html += '</div>'; // end outline-item
+    return html;
+  }
+
+  function renderOutliner() {
+    var el = document.getElementById('outliner');
+    var html = '';
+    for (var i = 0; i < outlineData.length; i++) {
+      html += renderOutlineItem(outlineData[i], 0);
+    }
+    el.innerHTML = html;
+  }
+
+  // ══════ Render Command Palette ══════
+  function renderCommandPalette(filter) {
+    var el = document.getElementById('cmdResults');
+    var html = '';
+    var filterLower = (filter || '').toLowerCase();
+    var first = true;
+
+    for (var i = 0; i < commands.length; i++) {
+      var cmd = commands[i];
+      if (filterLower && cmd.text.toLowerCase().indexOf(filterLower) === -1) continue;
+
+      var cls = 'cmd-result';
+      if (first) {
+        cls += ' selected';
+        first = false;
+      }
+      html += '<div class="' + cls + '">';
+      html += '<span class="cmd-result-icon">' + cmd.icon + '</span>';
+      html += '<span class="cmd-result-text">' + cmd.text + '</span>';
+      html += '<span class="cmd-result-kbd">';
+      for (var k = 0; k < cmd.keys.length; k++) {
+        html += '<kbd>' + cmd.keys[k] + '</kbd>';
+      }
+      html += '</span>';
+      html += '</div>';
+    }
+
+    el.innerHTML = html;
+  }
+
+  // ══════ Render Shortcut Bar ══════
+  function renderShortcutBar() {
+    var el = document.getElementById('shortcutBar');
+    var html = '';
+    for (var i = 0; i < shortcuts.length; i++) {
+      var s = shortcuts[i];
+      html += '<span class="shortcut-item">';
+      html += '<kbd>' + s.key + '</kbd>';
+      html += '<span class="shortcut-label">' + s.label + '</span>';
+      html += '</span>';
+    }
+    el.innerHTML = html;
+  }
+
+  // ══════ Command Palette Toggle ══════
+  var overlay = document.getElementById('cmdOverlay');
+  var cmdInput = document.getElementById('cmdInput');
+  var toggleBtn = document.getElementById('togglePalette');
+
+  function showPalette() {
+    overlay.classList.remove('hidden');
+    cmdInput.value = '';
+    cmdInput.focus();
+    renderCommandPalette('');
+  }
+
+  function hidePalette() {
+    overlay.classList.add('hidden');
+  }
+
+  toggleBtn.addEventListener('click', function() {
+    if (overlay.classList.contains('hidden')) {
+      showPalette();
+    } else {
+      hidePalette();
+    }
+  });
+
+  overlay.addEventListener('click', function(e) {
+    if (e.target === overlay) hidePalette();
+  });
+
+  cmdInput.addEventListener('input', function() {
+    renderCommandPalette(cmdInput.value);
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'k') {
+      e.preventDefault();
+      if (overlay.classList.contains('hidden')) {
+        showPalette();
+      } else {
+        hidePalette();
+      }
+    }
+    if (e.key === 'Escape') {
+      hidePalette();
+    }
+  });
+
+  // ══════ Init ══════
+  renderSidebarLists();
+  renderSidebarTags();
+  renderOutliner();
+  renderShortcutBar();
+  renderCommandPalette('');
+})();
+</script>
+
+</body>
+</html>

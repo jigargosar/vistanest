@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VistaNest — Hierarchical Outliner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,600;1,9..144,300&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     CSS VARIABLES — THE PALETTE
+     ============================================================ */
+  :root {
+    --bg-page: #FAF9F7;
+    --bg-sidebar: #F3F1ED;
+    --bg-sidebar-hover: #EBE8E2;
+    --bg-sidebar-active: #E4E0D8;
+    --bg-item-hover: rgba(0, 0, 0, 0.018);
+    --bg-item-focused: #EEF0FB;
+    --bg-item-focused-border: #9BA3D4;
+    --bg-breadcrumb: transparent;
+    --bg-help: #F6F5F2;
+
+    --text-primary: #1A1A1A;
+    --text-secondary: #6B6860;
+    --text-tertiary: #9E9A90;
+    --text-sidebar: #4A473F;
+    --text-sidebar-label: #8A8680;
+    --text-breadcrumb: #7A7670;
+    --text-breadcrumb-active: #1A1A1A;
+    --text-help-key: #1A1A1A;
+    --text-help-desc: #8A8680;
+
+    --accent: #5B63B7;
+    --accent-muted: #9BA3D4;
+    --accent-bg: #EEF0FB;
+
+    --border-sidebar: #E8E5DE;
+    --border-light: #EDEBE6;
+    --border-help: #E8E5DE;
+
+    --bullet: #C4C0B8;
+    --bullet-parent: #9E9A90;
+    --chevron: #B8B4AC;
+    --chevron-hover: #6B6860;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+    --font-body: 'IBM Plex Sans', -apple-system, sans-serif;
+    --font-mono: 'DM Mono', 'SF Mono', monospace;
+    --font-display: 'Fraunces', Georgia, serif;
+
+    --sidebar-width: 240px;
+    --item-indent: 28px;
+    --item-height: 34px;
+    --content-max: 780px;
+  }
+
+  /* ============================================================
+     RESET & BASE
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg-page);
+    color: var(--text-primary);
+    line-height: 1.55;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ============================================================
+     LAYOUT
+     ============================================================ */
+  .app {
+    display: flex;
+    height: 100vh;
+  }
+
+  /* ============================================================
+     SIDEBAR
+     ============================================================ */
+  .sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border-sidebar);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  .sidebar-brand {
+    padding: 20px 20px 16px;
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+  }
+
+  .sidebar-brand-name {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    font-style: italic;
+  }
+
+  .sidebar-brand-dot {
+    width: 5px;
+    height: 5px;
+    background: var(--accent);
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 1px;
+    position: relative;
+    top: -6px;
+  }
+
+  .sidebar-section-label {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-sidebar-label);
+    padding: 16px 20px 8px;
+  }
+
+  .sidebar-list {
+    list-style: none;
+    padding: 0 8px;
+  }
+
+  .sidebar-list-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.12s ease;
+    font-size: 0.88rem;
+    color: var(--text-sidebar);
+    position: relative;
+  }
+
+  .sidebar-list-item:hover {
+    background: var(--bg-sidebar-hover);
+  }
+
+  .sidebar-list-item.active {
+    background: var(--bg-sidebar-active);
+    font-weight: 500;
+  }
+
+  .sidebar-list-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 0 2px 2px 0;
+  }
+
+  .sidebar-list-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    opacity: 0.5;
+  }
+
+  .sidebar-list-count {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--text-tertiary);
+  }
+
+  .sidebar-spacer { flex: 1; }
+
+  .sidebar-footer {
+    padding: 12px 20px 16px;
+    border-top: 1px solid var(--border-sidebar);
+  }
+
+  .sidebar-footer-hint {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .sidebar-footer-hint kbd {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    background: #fff;
+    border: 1px solid var(--border-light);
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--text-secondary);
+  }
+
+  /* ============================================================
+     MAIN CONTENT
+     ============================================================ */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  /* ============================================================
+     TOP BAR
+     ============================================================ */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    height: 48px;
+    min-height: 48px;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    font-size: 0.82rem;
+    color: var(--text-breadcrumb);
+    font-family: var(--font-body);
+  }
+
+  .breadcrumb-item {
+    cursor: pointer;
+    padding: 2px 0;
+    transition: color 0.12s;
+  }
+
+  .breadcrumb-item:hover { color: var(--accent); }
+  .breadcrumb-item.current {
+    color: var(--text-breadcrumb-active);
+    font-weight: 500;
+    cursor: default;
+  }
+
+  .breadcrumb-sep {
+    margin: 0 8px;
+    color: var(--text-tertiary);
+    font-size: 0.72rem;
+    opacity: 0.6;
+  }
+
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .topbar-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    transition: all 0.12s;
+  }
+
+  .topbar-btn:hover {
+    background: var(--bg-item-hover);
+    color: var(--text-secondary);
+  }
+
+  .topbar-btn svg { width: 16px; height: 16px; }
+
+  /* ============================================================
+     OUTLINE CONTENT AREA
+     ============================================================ */
+  .outline-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0;
+  }
+
+  .outline-container::-webkit-scrollbar { width: 6px; }
+  .outline-container::-webkit-scrollbar-track { background: transparent; }
+  .outline-container::-webkit-scrollbar-thumb {
+    background: var(--border-light);
+    border-radius: 3px;
+  }
+  .outline-container::-webkit-scrollbar-thumb:hover {
+    background: var(--chevron);
+  }
+
+  .outline-header {
+    padding: 28px 32px 4px;
+    max-width: var(--content-max);
+  }
+
+  .outline-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 1.55rem;
+    letter-spacing: -0.025em;
+    color: var(--text-primary);
+    line-height: 1.3;
+  }
+
+  .outline-meta {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    margin-top: 6px;
+    display: flex;
+    gap: 16px;
+  }
+
+  .outline-body {
+    padding: 16px 32px 80px;
+    max-width: var(--content-max);
+  }
+
+  /* ============================================================
+     OUTLINE ITEMS
+     ============================================================ */
+  .outline-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .outline-item {
+    position: relative;
+  }
+
+  .outline-item-row {
+    display: flex;
+    align-items: flex-start;
+    min-height: var(--item-height);
+    padding: 3px 0 3px 0;
+    border-radius: 4px;
+    cursor: text;
+    transition: background 0.08s ease;
+    position: relative;
+  }
+
+  .outline-item-row:hover {
+    background: var(--bg-item-hover);
+  }
+
+  /* Focused item */
+  .outline-item-row.focused {
+    background: var(--bg-item-focused);
+    border-radius: 4px;
+    box-shadow: inset 2px 0 0 var(--bg-item-focused-border);
+  }
+
+  /* Indentation nesting lines */
+  .outline-children {
+    padding-left: var(--item-indent);
+    position: relative;
+  }
+
+  .outline-children::before {
+    content: '';
+    position: absolute;
+    left: 13px;
+    top: 0;
+    bottom: 8px;
+    width: 1px;
+    background: var(--border-light);
+  }
+
+  /* Chevron toggle */
+  .item-toggle {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+    margin-top: 5px;
+    margin-right: 0;
+    border-radius: 3px;
+    transition: all 0.12s;
+    color: var(--chevron);
+  }
+
+  .item-toggle:hover {
+    color: var(--chevron-hover);
+    background: rgba(0,0,0,0.04);
+  }
+
+  .item-toggle svg {
+    width: 12px;
+    height: 12px;
+    transition: transform 0.15s ease;
+  }
+
+  .item-toggle.collapsed svg {
+    transform: rotate(-90deg);
+  }
+
+  .item-toggle.leaf {
+    visibility: hidden;
+  }
+
+  /* Bullet */
+  .item-bullet {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--bullet);
+    flex-shrink: 0;
+    margin-top: 11px;
+    margin-right: 10px;
+    margin-left: 2px;
+    transition: background 0.12s;
+  }
+
+  .item-bullet.parent {
+    background: var(--bullet-parent);
+    width: 7px;
+    height: 7px;
+    margin-top: 10px;
+  }
+
+  /* Item text content */
+  .item-text {
+    flex: 1;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    padding: 4px 8px 4px 0;
+    color: var(--text-primary);
+    min-width: 0;
+  }
+
+  .item-text .note {
+    display: block;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    margin-top: 1px;
+    font-style: italic;
+    line-height: 1.45;
+  }
+
+  .item-text strong {
+    font-weight: 500;
+  }
+
+  .item-text code {
+    font-family: var(--font-mono);
+    font-size: 0.84em;
+    background: rgba(0,0,0,0.04);
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--accent);
+  }
+
+  .item-text .tag {
+    font-family: var(--font-mono);
+    font-size: 0.76em;
+    color: var(--accent);
+    opacity: 0.7;
+  }
+
+  /* Collapsed indicator */
+  .item-collapsed-count {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--text-tertiary);
+    background: var(--bg-sidebar);
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-top: 6px;
+    flex-shrink: 0;
+    margin-right: 4px;
+  }
+
+  /* ============================================================
+     KEYBOARD SHORTCUTS HELP PANEL
+     ============================================================ */
+  .help-panel {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    width: 260px;
+    background: var(--bg-help);
+    border: 1px solid var(--border-help);
+    border-radius: 10px;
+    padding: 14px 16px 12px;
+    box-shadow: var(--shadow-md);
+    font-size: 0.75rem;
+    z-index: 100;
+    opacity: 0;
+    transform: translateY(6px);
+    animation: helpFadeIn 0.4s ease 0.8s forwards;
+  }
+
+  @keyframes helpFadeIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .help-panel-title {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-tertiary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .help-panel-title::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--accent-muted);
+    border-radius: 50%;
+    opacity: 0.6;
+  }
+
+  .help-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 0;
+  }
+
+  .help-row + .help-row {
+    border-top: 1px solid rgba(0,0,0,0.03);
+  }
+
+  .help-keys {
+    display: flex;
+    gap: 3px;
+  }
+
+  .help-key {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 400;
+    background: #fff;
+    border: 1px solid var(--border-light);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: var(--text-help-key);
+    min-width: 22px;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  .help-desc {
+    color: var(--text-help-desc);
+    font-size: 0.72rem;
+  }
+
+  .help-divider {
+    height: 1px;
+    background: var(--border-light);
+    margin: 6px 0;
+  }
+
+  .help-toggle-hint {
+    text-align: center;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    margin-top: 6px;
+    opacity: 0.7;
+  }
+
+  /* ============================================================
+     ITEM COUNT BADGE (sidebar)
+     ============================================================ */
+
+  /* ============================================================
+     SUBTLE TEXTURE ON PAGE BACKGROUND
+     ============================================================ */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.015'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ============================================================
+     ENTRANCE ANIMATIONS
+     ============================================================ */
+  .sidebar {
+    animation: slideInLeft 0.35s ease both;
+  }
+
+  @keyframes slideInLeft {
+    from { opacity: 0; transform: translateX(-12px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .outline-header {
+    animation: fadeInUp 0.3s ease 0.15s both;
+  }
+
+  .outline-body {
+    animation: fadeInUp 0.35s ease 0.25s both;
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ============================================================
+     RESPONSIVE
+     ============================================================ */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .outline-header, .outline-body { padding-left: 20px; padding-right: 20px; }
+    .topbar { padding: 0 20px; }
+    .help-panel { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ============================
+       SIDEBAR
+       ============================ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <span class="sidebar-brand-name">VistaNest</span>
+      <span class="sidebar-brand-dot"></span>
+    </div>
+
+    <div class="sidebar-section-label">Lists</div>
+    <ul class="sidebar-list">
+      <li class="sidebar-list-item active">
+        <svg class="sidebar-list-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 4h12M4 7h10M6 10h8M4 13h10"/>
+        </svg>
+        Product Roadmap
+        <span class="sidebar-list-count">24</span>
+      </li>
+      <li class="sidebar-list-item">
+        <svg class="sidebar-list-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 4h12M4 7h10M6 10h8M4 13h10"/>
+        </svg>
+        Research Notes
+        <span class="sidebar-list-count">18</span>
+      </li>
+      <li class="sidebar-list-item">
+        <svg class="sidebar-list-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 4h12M4 7h10M6 10h8M4 13h10"/>
+        </svg>
+        Architecture Decisions
+        <span class="sidebar-list-count">9</span>
+      </li>
+      <li class="sidebar-list-item">
+        <svg class="sidebar-list-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 4h12M4 7h10M6 10h8M4 13h10"/>
+        </svg>
+        Team Retros
+        <span class="sidebar-list-count">12</span>
+      </li>
+      <li class="sidebar-list-item">
+        <svg class="sidebar-list-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M2 4h12M4 7h10M6 10h8M4 13h10"/>
+        </svg>
+        Personal
+        <span class="sidebar-list-count">7</span>
+      </li>
+    </ul>
+
+    <div class="sidebar-spacer"></div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-hint">
+        <kbd>?</kbd> keyboard shortcuts
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============================
+       MAIN
+       ============================ -->
+  <main class="main">
+    <!-- Top bar with breadcrumb -->
+    <div class="topbar">
+      <nav class="breadcrumb">
+        <span class="breadcrumb-item">Product Roadmap</span>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-item">Q1 2026</span>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-item current">Core Features</span>
+      </nav>
+      <div class="topbar-actions">
+        <button class="topbar-btn" title="Collapse all">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M4 6h8M4 10h8"/>
+          </svg>
+        </button>
+        <button class="topbar-btn" title="Search">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="7" cy="7" r="4.5"/>
+            <path d="M10.5 10.5L14 14"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Outline area -->
+    <div class="outline-container">
+      <div class="outline-header">
+        <h1 class="outline-title">Core Features</h1>
+        <div class="outline-meta">
+          <span>24 items</span>
+          <span>Updated 2 hours ago</span>
+        </div>
+      </div>
+
+      <div class="outline-body">
+        <ul class="outline-list" id="outline-root"></ul>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ============================
+     KEYBOARD SHORTCUTS PANEL
+     ============================ -->
+<div class="help-panel">
+  <div class="help-panel-title">Shortcuts</div>
+
+  <div class="help-row">
+    <span class="help-keys"><span class="help-key">j</span><span class="help-key">k</span></span>
+    <span class="help-desc">Navigate up / down</span>
+  </div>
+  <div class="help-row">
+    <span class="help-keys"><span class="help-key">Tab</span></span>
+    <span class="help-desc">Indent item</span>
+  </div>
+  <div class="help-row">
+    <span class="help-keys"><span class="help-key">S+Tab</span></span>
+    <span class="help-desc">Outdent item</span>
+  </div>
+  <div class="help-row">
+    <span class="help-keys"><span class="help-key">Enter</span></span>
+    <span class="help-desc">New item below</span>
+  </div>
+
+  <div class="help-divider"></div>
+
+  <div class="help-row">
+    <span class="help-keys"><span class="help-key">l</span></span>
+    <span class="help-desc">Expand / zoom in</span>
+  </div>
+  <div class="help-row">
+    <span class="help-keys"><span class="help-key">h</span></span>
+    <span class="help-desc">Collapse / zoom out</span>
+  </div>
+  <div class="help-row">
+    <span class="help-keys"><span class="help-key">A+&uarr;</span><span class="help-key">A+&darr;</span></span>
+    <span class="help-desc">Move item up / down</span>
+  </div>
+
+  <div class="help-divider"></div>
+
+  <div class="help-row">
+    <span class="help-keys"><span class="help-key">o</span></span>
+    <span class="help-desc">Open / focus subtree</span>
+  </div>
+  <div class="help-row">
+    <span class="help-keys"><span class="help-key">u</span></span>
+    <span class="help-desc">Go up to parent</span>
+  </div>
+  <div class="help-row">
+    <span class="help-keys"><span class="help-key">/</span></span>
+    <span class="help-desc">Search in list</span>
+  </div>
+
+  <div class="help-toggle-hint">Press <strong>?</strong> to toggle</div>
+</div>
+
+<script>
+// ================================================================
+// DATA: Realistic sample outline
+// ================================================================
+var outlineData = [
+  {
+    text: '<strong>Outliner Engine</strong>',
+    note: 'Core data structure and editing operations',
+    expanded: true,
+    children: [
+      {
+        text: 'Tree data model with persistent IDs',
+        note: 'Each node gets a stable UUID for syncing',
+        expanded: true,
+        children: [
+          { text: 'Implement <code>OutlineNode</code> immutable record', children: [] },
+          { text: 'Parent-child index for O(1) lookups', children: [] },
+          { text: 'Sibling ordering via fractional indexing', children: [], focused: true },
+          { text: 'Serialization to flat JSON array', children: [] }
+        ]
+      },
+      {
+        text: 'CRDT-based conflict resolution',
+        expanded: false,
+        collapsedCount: 5,
+        children: [
+          { text: 'Evaluate Yjs vs Automerge', children: [] },
+          { text: 'Tree-move operation semantics', children: [] },
+          { text: 'Tombstone garbage collection', children: [] },
+          { text: 'Undo/redo with CRDT history', children: [] },
+          { text: 'Benchmark: 10k node sync latency', children: [] }
+        ]
+      },
+      {
+        text: 'Keyboard command system',
+        expanded: true,
+        children: [
+          { text: 'Vim-inspired modal navigation', children: [] },
+          {
+            text: 'Command palette integration',
+            expanded: true,
+            children: [
+              { text: 'Fuzzy search over commands <span class="tag">#ux</span>', children: [] },
+              { text: 'Recently used commands list', children: [] }
+            ]
+          },
+          { text: 'Customizable keybindings via JSON config', children: [] }
+        ]
+      }
+    ]
+  },
+  {
+    text: '<strong>Rendering Layer</strong>',
+    expanded: true,
+    children: [
+      {
+        text: 'Virtual scrolling for large outlines',
+        note: 'Target: 100k+ items without jank',
+        children: []
+      },
+      {
+        text: 'Smooth expand/collapse transitions',
+        expanded: true,
+        children: [
+          { text: 'CSS <code>grid-template-rows</code> animation trick', children: [] },
+          { text: 'Stagger children entrance by 20ms each', children: [] }
+        ]
+      },
+      { text: 'Focus-mode zoom animation', children: [] },
+      { text: 'Drag handle for mouse reordering', children: [] }
+    ]
+  },
+  {
+    text: '<strong>Data & Sync</strong>',
+    expanded: false,
+    collapsedCount: 6,
+    children: [
+      { text: 'Local-first with IndexedDB', children: [] },
+      { text: 'WebSocket real-time sync', children: [] },
+      { text: 'Offline queue with retry', children: [] },
+      { text: 'Import from Checkvist OPML', children: [] },
+      { text: 'Import from WorkFlowy export', children: [] },
+      { text: 'Export to Markdown / OPML', children: [] }
+    ]
+  },
+  {
+    text: '<strong>Polish & Delight</strong>',
+    note: 'The 20% that makes it feel like 100%',
+    expanded: true,
+    children: [
+      { text: 'Typewriter-scroll mode', children: [] },
+      { text: 'Subtle ambient background noise option', children: [] },
+      { text: 'Print stylesheet for outlines', children: [] }
+    ]
+  }
+];
+
+// ================================================================
+// RENDERER: Build outline DOM from data
+// ================================================================
+function chevronSvg() {
+  return '<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 2.5L8 6L4.5 9.5"/></svg>';
+}
+
+function buildItem(item) {
+  var li = document.createElement('li');
+  li.className = 'outline-item';
+
+  var row = document.createElement('div');
+  row.className = 'outline-item-row';
+  if (item.focused) {
+    row.className += ' focused';
+  }
+
+  // Toggle
+  var toggle = document.createElement('span');
+  toggle.className = 'item-toggle';
+  if (item.children && item.children.length > 0) {
+    toggle.innerHTML = chevronSvg();
+    if (item.expanded === false) {
+      toggle.className += ' collapsed';
+    }
+  } else {
+    toggle.className += ' leaf';
+    toggle.innerHTML = chevronSvg();
+  }
+  row.appendChild(toggle);
+
+  // Bullet
+  var bullet = document.createElement('span');
+  bullet.className = 'item-bullet';
+  if (item.children && item.children.length > 0) {
+    bullet.className += ' parent';
+  }
+  row.appendChild(bullet);
+
+  // Text
+  var text = document.createElement('span');
+  text.className = 'item-text';
+  var html = item.text;
+  if (item.note) {
+    html += '<span class="note">' + item.note + '</span>';
+  }
+  text.innerHTML = html;
+  row.appendChild(text);
+
+  // Collapsed count badge
+  if (item.expanded === false && item.collapsedCount) {
+    var badge = document.createElement('span');
+    badge.className = 'item-collapsed-count';
+    badge.textContent = item.collapsedCount + ' hidden';
+    row.appendChild(badge);
+  }
+
+  li.appendChild(row);
+
+  // Children
+  if (item.children && item.children.length > 0 && item.expanded !== false) {
+    var childrenUl = document.createElement('ul');
+    childrenUl.className = 'outline-list outline-children';
+    for (var i = 0; i < item.children.length; i++) {
+      childrenUl.appendChild(buildItem(item.children[i]));
+    }
+    li.appendChild(childrenUl);
+  }
+
+  return li;
+}
+
+function renderOutline() {
+  var root = document.getElementById('outline-root');
+  for (var i = 0; i < outlineData.length; i++) {
+    root.appendChild(buildItem(outlineData[i]));
+  }
+}
+
+renderOutline();
+</script>
+
+</body>
+</html>

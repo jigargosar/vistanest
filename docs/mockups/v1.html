@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VistaNest — Outliner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;1,400&family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,300;1,8..60,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+  /* ===== CSS Variables ===== */
+  :root {
+    --bg-primary: #FAFAF8;
+    --bg-sidebar: #F3F2EE;
+    --bg-sidebar-hover: #EAE8E2;
+    --bg-sidebar-active: #E2E0D8;
+    --bg-item-hover: #F5F4F0;
+    --bg-item-focus: #FFF8E7;
+    --bg-help: #F7F6F2;
+
+    --border-subtle: #E8E6DF;
+    --border-medium: #D9D6CC;
+    --border-focus: #D4A843;
+
+    --text-primary: #2C2C2A;
+    --text-secondary: #6B6962;
+    --text-tertiary: #9E9B90;
+    --text-accent: #B8860B;
+    --text-breadcrumb: #8A8780;
+    --text-sidebar-heading: #7A776D;
+
+    --accent: #D4A843;
+    --accent-soft: #F0E4C4;
+    --accent-glow: rgba(212, 168, 67, 0.08);
+
+    --chevron-color: #C4C1B8;
+    --chevron-hover: #8A8780;
+
+    --font-body: 'DM Sans', -apple-system, sans-serif;
+    --font-serif: 'Source Serif 4', Georgia, serif;
+    --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
+
+    --sidebar-width: 240px;
+    --content-max-width: 780px;
+    --item-height: 34px;
+    --indent-size: 24px;
+
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+
+    --shadow-subtle: 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-medium: 0 2px 8px rgba(0,0,0,0.06);
+    --shadow-panel: 0 4px 20px rgba(0,0,0,0.08);
+
+    --transition-fast: 120ms ease;
+    --transition-normal: 200ms ease;
+  }
+
+  /* ===== Reset & Base ===== */
+  *, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: var(--font-body);
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    line-height: 1.6;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ===== Layout ===== */
+  .app {
+    display: flex;
+    height: 100vh;
+  }
+
+  /* ===== Sidebar ===== */
+  .sidebar {
+    width: var(--sidebar-width);
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border-subtle);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    user-select: none;
+    position: relative;
+    z-index: 10;
+  }
+
+  .sidebar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: -1px;
+    bottom: 0;
+    width: 1px;
+    background: linear-gradient(to bottom, transparent, var(--border-subtle) 10%, var(--border-subtle) 90%, transparent);
+  }
+
+  .sidebar-header {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .logo-icon {
+    width: 26px;
+    height: 26px;
+    position: relative;
+  }
+
+  .logo-icon svg {
+    width: 100%;
+    height: 100%;
+  }
+
+  .logo-text {
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--text-primary);
+  }
+
+  .sidebar-section {
+    padding: 16px 12px 8px;
+  }
+
+  .sidebar-section-title {
+    font-size: 0.68rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-sidebar-heading);
+    padding: 0 8px 8px;
+  }
+
+  .sidebar-list {
+    list-style: none;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    position: relative;
+  }
+
+  .sidebar-item:hover {
+    background: var(--bg-sidebar-hover);
+    color: var(--text-primary);
+  }
+
+  .sidebar-item.active {
+    background: var(--bg-sidebar-active);
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .sidebar-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 16px;
+    background: var(--accent);
+    border-radius: 0 2px 2px 0;
+  }
+
+  .sidebar-item-icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.55;
+    flex-shrink: 0;
+  }
+
+  .sidebar-item.active .sidebar-item-icon {
+    opacity: 0.8;
+  }
+
+  .sidebar-item-count {
+    margin-left: auto;
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    color: var(--text-tertiary);
+    background: rgba(0,0,0,0.04);
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 12px;
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .sidebar-footer-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+  }
+
+  .sidebar-footer-item:hover {
+    background: var(--bg-sidebar-hover);
+    color: var(--text-secondary);
+  }
+
+  .sidebar-footer-item svg {
+    width: 14px;
+    height: 14px;
+    opacity: 0.5;
+  }
+
+  /* ===== Main Content ===== */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ===== Toolbar / Breadcrumb ===== */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 32px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-primary);
+    min-height: 48px;
+    flex-shrink: 0;
+  }
+
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.82rem;
+  }
+
+  .breadcrumb-item {
+    color: var(--text-breadcrumb);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: var(--radius-sm);
+    transition: color var(--transition-fast), background var(--transition-fast);
+    text-decoration: none;
+  }
+
+  .breadcrumb-item:hover {
+    color: var(--text-secondary);
+    background: var(--bg-item-hover);
+  }
+
+  .breadcrumb-sep {
+    color: var(--chevron-color);
+    font-size: 0.7rem;
+    margin: 0 1px;
+  }
+
+  .breadcrumb-current {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .toolbar-btn {
+    background: none;
+    border: 1px solid transparent;
+    padding: 5px 8px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-tertiary);
+    font-size: 0.78rem;
+    font-family: var(--font-body);
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .toolbar-btn:hover {
+    color: var(--text-secondary);
+    background: var(--bg-item-hover);
+    border-color: var(--border-subtle);
+  }
+
+  .toolbar-btn svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  /* ===== Outline Content ===== */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 20px 0 80px;
+  }
+
+  .content::-webkit-scrollbar {
+    width: 6px;
+  }
+  .content::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .content::-webkit-scrollbar-thumb {
+    background: var(--border-subtle);
+    border-radius: 3px;
+  }
+  .content::-webkit-scrollbar-thumb:hover {
+    background: var(--border-medium);
+  }
+
+  .outline-title {
+    font-family: var(--font-serif);
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    padding: 8px 32px 4px;
+    max-width: calc(var(--content-max-width) + 64px);
+    letter-spacing: -0.02em;
+    line-height: 1.35;
+  }
+
+  .outline-meta {
+    padding: 0 32px 20px;
+    font-size: 0.76rem;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .outline-meta-sep {
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--border-medium);
+  }
+
+  /* ===== Outline Tree ===== */
+  .outline-tree {
+    max-width: calc(var(--content-max-width) + 64px);
+  }
+
+  .outline-node {
+    position: relative;
+  }
+
+  /* Vertical nesting guide lines */
+  .outline-node .outline-children::before {
+    content: '';
+    position: absolute;
+    left: calc(var(--depth, 0) * var(--indent-size) + 32px + 6px);
+    top: 0;
+    bottom: 8px;
+    width: 1px;
+    background: var(--border-subtle);
+    opacity: 0.6;
+  }
+
+  .outline-children {
+    position: relative;
+  }
+
+  .outline-item {
+    display: flex;
+    align-items: flex-start;
+    min-height: var(--item-height);
+    padding: 3px 32px 3px;
+    padding-left: calc(var(--depth, 0) * var(--indent-size) + 32px);
+    cursor: text;
+    position: relative;
+    transition: background var(--transition-fast);
+    border-radius: 0;
+  }
+
+  .outline-item:hover {
+    background: var(--bg-item-hover);
+  }
+
+  .outline-item.focused {
+    background: var(--bg-item-focus);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .outline-item.focused .item-text {
+    color: var(--text-primary);
+  }
+
+  /* ===== Chevron Toggle ===== */
+  .item-toggle {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 5px;
+    margin-right: 4px;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+    color: var(--chevron-color);
+  }
+
+  .item-toggle:hover {
+    color: var(--chevron-hover);
+    background: rgba(0,0,0,0.04);
+  }
+
+  .item-toggle svg {
+    width: 12px;
+    height: 12px;
+    transition: transform var(--transition-normal);
+  }
+
+  .item-toggle.expanded svg {
+    transform: rotate(90deg);
+  }
+
+  .item-toggle.leaf {
+    visibility: hidden;
+  }
+
+  /* Bullet for leaf nodes */
+  .item-bullet {
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 5px;
+    margin-right: 4px;
+  }
+
+  .item-bullet::after {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--chevron-color);
+    transition: background var(--transition-fast);
+  }
+
+  .outline-item:hover .item-bullet::after {
+    background: var(--chevron-hover);
+  }
+
+  .outline-item.focused .item-bullet::after {
+    background: var(--accent);
+  }
+
+  .item-text {
+    flex: 1;
+    font-size: 0.92rem;
+    line-height: 1.65;
+    color: var(--text-primary);
+    padding: 2px 0;
+    min-height: 28px;
+    outline: none;
+  }
+
+  .item-text .note {
+    font-size: 0.82rem;
+    color: var(--text-tertiary);
+    font-style: italic;
+    display: block;
+    margin-top: 1px;
+    line-height: 1.5;
+    font-family: var(--font-serif);
+  }
+
+  .item-text .tag {
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--text-accent);
+    background: var(--accent-glow);
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: 6px;
+    border: 1px solid var(--accent-soft);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+  }
+
+  .item-text .inline-code {
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    background: rgba(0,0,0,0.04);
+    padding: 1px 5px;
+    border-radius: 3px;
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+  }
+
+  /* Collapsed children hint */
+  .collapse-hint {
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    color: var(--text-tertiary);
+    margin-left: 8px;
+    opacity: 0.7;
+    cursor: pointer;
+  }
+
+  .collapse-hint:hover {
+    opacity: 1;
+    color: var(--text-accent);
+  }
+
+  /* ===== Help Panel ===== */
+  .help-panel {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    background: var(--bg-help);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    padding: 14px 18px;
+    box-shadow: var(--shadow-panel);
+    font-size: 0.74rem;
+    color: var(--text-secondary);
+    z-index: 100;
+    max-width: 280px;
+    opacity: 0;
+    transform: translateY(8px);
+    animation: fadeInUp 0.5s ease 0.8s forwards;
+  }
+
+  @keyframes fadeInUp {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .help-panel-title {
+    font-weight: 500;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .help-panel-title svg {
+    width: 12px;
+    height: 12px;
+    opacity: 0.5;
+  }
+
+  .help-grid {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 5px 14px;
+    align-items: center;
+  }
+
+  kbd {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    background: white;
+    border: 1px solid var(--border-medium);
+    border-bottom-width: 2px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+    line-height: 1.6;
+  }
+
+  .help-desc {
+    color: var(--text-tertiary);
+    font-size: 0.73rem;
+  }
+
+  .help-divider {
+    grid-column: 1 / -1;
+    height: 1px;
+    background: var(--border-subtle);
+    margin: 4px 0;
+  }
+
+  .help-toggle-hint {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px solid var(--border-subtle);
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+  }
+
+  /* ===== Cursor blink on focused item ===== */
+  .outline-item.focused .item-text::after {
+    content: '';
+    display: inline-block;
+    width: 1.5px;
+    height: 1em;
+    background: var(--accent);
+    margin-left: 1px;
+    vertical-align: text-bottom;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* ===== Subtle page load animation ===== */
+  .sidebar {
+    animation: slideInLeft 0.4s ease both;
+  }
+
+  .main {
+    animation: fadeIn 0.5s ease 0.15s both;
+  }
+
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .outline-node {
+    animation: fadeInItem 0.35s ease both;
+  }
+
+  .outline-node:nth-child(1) { animation-delay: 0.2s; }
+  .outline-node:nth-child(2) { animation-delay: 0.26s; }
+  .outline-node:nth-child(3) { animation-delay: 0.32s; }
+  .outline-node:nth-child(4) { animation-delay: 0.38s; }
+  .outline-node:nth-child(5) { animation-delay: 0.44s; }
+  .outline-node:nth-child(6) { animation-delay: 0.5s; }
+  .outline-node:nth-child(7) { animation-delay: 0.56s; }
+
+  @keyframes fadeInItem {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* ===== Empty state line for adding items ===== */
+  .outline-empty-line {
+    padding: 3px 32px 3px;
+    padding-left: calc(var(--depth, 0) * var(--indent-size) + 32px + 22px);
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+  }
+
+  .outline-empty-line::after {
+    content: 'Type to add item...';
+    color: var(--text-tertiary);
+    opacity: 0;
+    font-size: 0.85rem;
+    font-style: italic;
+    transition: opacity var(--transition-normal);
+  }
+
+  .outline-tree:hover .outline-empty-line::after {
+    opacity: 0.4;
+  }
+
+  /* ===== Selection count badge ===== */
+  .status-bar {
+    position: fixed;
+    bottom: 16px;
+    left: calc(var(--sidebar-width) + 16px);
+    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    color: var(--text-tertiary);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    opacity: 0;
+    animation: fadeIn 0.5s ease 1.2s forwards;
+  }
+
+  .status-bar span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #8BC48A;
+    box-shadow: 0 0 4px rgba(139, 196, 138, 0.4);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="3" y="4" width="8" height="8" rx="2" fill="#D4A843" opacity="0.9"/>
+            <rect x="15" y="4" width="8" height="8" rx="2" fill="#D4A843" opacity="0.5"/>
+            <rect x="3" y="14" width="8" height="8" rx="2" fill="#D4A843" opacity="0.5"/>
+            <rect x="15" y="14" width="8" height="8" rx="2" fill="#D4A843" opacity="0.25"/>
+          </svg>
+        </div>
+        <span class="logo-text">VistaNest</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Lists</div>
+      <ul class="sidebar-list">
+        <li class="sidebar-item active">
+          <svg class="sidebar-item-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a1 1 0 011-1h10a1 1 0 110 2H3a1 1 0 01-1-1zm2 4a1 1 0 011-1h8a1 1 0 110 2H5a1 1 0 01-1-1zm2 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z"/></svg>
+          Product Roadmap
+          <span class="sidebar-item-count">24</span>
+        </li>
+        <li class="sidebar-item">
+          <svg class="sidebar-item-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a1 1 0 011-1h10a1 1 0 110 2H3a1 1 0 01-1-1zm2 4a1 1 0 011-1h8a1 1 0 110 2H5a1 1 0 01-1-1zm2 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z"/></svg>
+          Research Notes
+          <span class="sidebar-item-count">18</span>
+        </li>
+        <li class="sidebar-item">
+          <svg class="sidebar-item-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a1 1 0 011-1h10a1 1 0 110 2H3a1 1 0 01-1-1zm2 4a1 1 0 011-1h8a1 1 0 110 2H5a1 1 0 01-1-1zm2 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z"/></svg>
+          Meeting Agendas
+          <span class="sidebar-item-count">7</span>
+        </li>
+        <li class="sidebar-item">
+          <svg class="sidebar-item-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a1 1 0 011-1h10a1 1 0 110 2H3a1 1 0 01-1-1zm2 4a1 1 0 011-1h8a1 1 0 110 2H5a1 1 0 01-1-1zm2 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z"/></svg>
+          Book Outlines
+          <span class="sidebar-item-count">3</span>
+        </li>
+        <li class="sidebar-item">
+          <svg class="sidebar-item-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 4a1 1 0 011-1h10a1 1 0 110 2H3a1 1 0 01-1-1zm2 4a1 1 0 011-1h8a1 1 0 110 2H5a1 1 0 01-1-1zm2 4a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z"/></svg>
+          Personal Wiki
+          <span class="sidebar-item-count">41</span>
+        </li>
+      </ul>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-footer-item">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 1.5a5.5 5.5 0 110 11 5.5 5.5 0 010-11zM7.25 5a.75.75 0 011.5 0v2.25H11a.75.75 0 010 1.5H7.25V5z"/></svg>
+        New list
+      </div>
+      <div class="sidebar-footer-item">
+        <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1C4.1 1 1 4.1 1 8s3.1 7 7 7 7-3.1 7-7-3.1-7-7-7zm0 1.5c3 0 5.5 2.5 5.5 5.5S11 13.5 8 13.5 2.5 11 2.5 8 5 2.5 8 2.5zM7.25 5v2.25H5a.75.75 0 000 1.5h2.25V11a.75.75 0 001.5 0V8.75H11a.75.75 0 000-1.5H8.75V5a.75.75 0 00-1.5 0z"/></svg>
+        Settings
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===== Main Content ===== -->
+  <main class="main">
+
+    <!-- ===== Toolbar ===== -->
+    <div class="toolbar">
+      <nav class="breadcrumb">
+        <span class="breadcrumb-item">Product Roadmap</span>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-item">Q1 2026 Priorities</span>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">Core Platform</span>
+      </nav>
+      <div class="toolbar-actions">
+        <button class="toolbar-btn">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M11.5 7a4.5 4.5 0 10-9 0 4.5 4.5 0 009 0zm-4.5-6a6 6 0 014.83 9.55l3.31 3.31a.75.75 0 01-1.06 1.06l-3.31-3.31A6 6 0 117 1z"/></svg>
+          Search
+        </button>
+        <button class="toolbar-btn">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M2.5 3.5a1 1 0 011-1h9a1 1 0 011 1v1a1 1 0 01-1 1h-9a1 1 0 01-1-1v-1zm0 4a1 1 0 011-1h9a1 1 0 011 1v1a1 1 0 01-1 1h-9a1 1 0 01-1-1v-1zm0 4a1 1 0 011-1h9a1 1 0 011 1v1a1 1 0 01-1 1h-9a1 1 0 01-1-1v-1z"/></svg>
+          Expand all
+        </button>
+      </div>
+    </div>
+
+    <!-- ===== Outline ===== -->
+    <div class="content">
+      <h1 class="outline-title">Core Platform</h1>
+      <div class="outline-meta">
+        <span>24 items</span>
+        <span class="outline-meta-sep"></span>
+        <span>Updated 2h ago</span>
+        <span class="outline-meta-sep"></span>
+        <span>4 collapsed</span>
+      </div>
+
+      <div class="outline-tree">
+
+        <!-- Node 1: Editor Engine (expanded) -->
+        <div class="outline-node" style="--depth: 0;">
+          <div class="outline-item">
+            <div class="item-toggle expanded">
+              <svg viewBox="0 0 12 12" fill="currentColor"><path d="M4.5 2L9 6l-4.5 4V2z"/></svg>
+            </div>
+            <div class="item-text">Editor engine <span class="tag">#core</span></div>
+          </div>
+          <div class="outline-children">
+            <!-- 1.1 -->
+            <div class="outline-node" style="--depth: 1;">
+              <div class="outline-item">
+                <div class="item-toggle expanded">
+                  <svg viewBox="0 0 12 12" fill="currentColor"><path d="M4.5 2L9 6l-4.5 4V2z"/></svg>
+                </div>
+                <div class="item-text">Rich text support</div>
+              </div>
+              <div class="outline-children">
+                <!-- 1.1.1 -->
+                <div class="outline-node" style="--depth: 2;">
+                  <div class="outline-item">
+                    <div class="item-bullet"></div>
+                    <div class="item-text">Bold, italic, and <span class="inline-code">inline code</span> formatting</div>
+                  </div>
+                </div>
+                <!-- 1.1.2 -->
+                <div class="outline-node" style="--depth: 2;">
+                  <div class="outline-item">
+                    <div class="item-bullet"></div>
+                    <div class="item-text">Markdown shortcuts for fast input</div>
+                  </div>
+                </div>
+                <!-- 1.1.3 -->
+                <div class="outline-node" style="--depth: 2;">
+                  <div class="outline-item focused">
+                    <div class="item-bullet"></div>
+                    <div class="item-text">LaTeX rendering for math expressions</div>
+                  </div>
+                </div>
+                <!-- 1.1.4 -->
+                <div class="outline-node" style="--depth: 2;">
+                  <div class="outline-item">
+                    <div class="item-bullet"></div>
+                    <div class="item-text">Syntax-highlighted code blocks
+                      <span class="note">Consider using Shiki for server-side highlighting</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- 1.2 -->
+            <div class="outline-node" style="--depth: 1;">
+              <div class="outline-item">
+                <div class="item-toggle">
+                  <svg viewBox="0 0 12 12" fill="currentColor"><path d="M4.5 2L9 6l-4.5 4V2z"/></svg>
+                </div>
+                <div class="item-text">Collaborative editing <span class="collapse-hint">3 items</span></div>
+              </div>
+            </div>
+            <!-- 1.3 -->
+            <div class="outline-node" style="--depth: 1;">
+              <div class="outline-item">
+                <div class="item-bullet"></div>
+                <div class="item-text">Undo/redo with branching history</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Node 2: Data layer (expanded) -->
+        <div class="outline-node" style="--depth: 0;">
+          <div class="outline-item">
+            <div class="item-toggle expanded">
+              <svg viewBox="0 0 12 12" fill="currentColor"><path d="M4.5 2L9 6l-4.5 4V2z"/></svg>
+            </div>
+            <div class="item-text">Data layer <span class="tag">#infra</span></div>
+          </div>
+          <div class="outline-children">
+            <!-- 2.1 -->
+            <div class="outline-node" style="--depth: 1;">
+              <div class="outline-item">
+                <div class="item-toggle expanded">
+                  <svg viewBox="0 0 12 12" fill="currentColor"><path d="M4.5 2L9 6l-4.5 4V2z"/></svg>
+                </div>
+                <div class="item-text">Offline-first sync architecture</div>
+              </div>
+              <div class="outline-children">
+                <!-- 2.1.1 -->
+                <div class="outline-node" style="--depth: 2;">
+                  <div class="outline-item">
+                    <div class="item-bullet"></div>
+                    <div class="item-text">CRDT-based conflict resolution
+                      <span class="note">Evaluate Yjs vs. Automerge for our use case</span>
+                    </div>
+                  </div>
+                </div>
+                <!-- 2.1.2 -->
+                <div class="outline-node" style="--depth: 2;">
+                  <div class="outline-item">
+                    <div class="item-toggle">
+                      <svg viewBox="0 0 12 12" fill="currentColor"><path d="M4.5 2L9 6l-4.5 4V2z"/></svg>
+                    </div>
+                    <div class="item-text">IndexedDB persistence layer <span class="collapse-hint">2 items</span></div>
+                  </div>
+                </div>
+                <!-- 2.1.3 -->
+                <div class="outline-node" style="--depth: 2;">
+                  <div class="outline-item">
+                    <div class="item-bullet"></div>
+                    <div class="item-text">WebSocket real-time transport</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- 2.2 -->
+            <div class="outline-node" style="--depth: 1;">
+              <div class="outline-item">
+                <div class="item-bullet"></div>
+                <div class="item-text">Export to OPML, Markdown, JSON</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Node 3: Keyboard navigation (collapsed) -->
+        <div class="outline-node" style="--depth: 0;">
+          <div class="outline-item">
+            <div class="item-toggle">
+              <svg viewBox="0 0 12 12" fill="currentColor"><path d="M4.5 2L9 6l-4.5 4V2z"/></svg>
+            </div>
+            <div class="item-text">Keyboard navigation <span class="tag">#ux</span> <span class="collapse-hint">6 items</span></div>
+          </div>
+        </div>
+
+        <!-- Node 4: Search and filtering (expanded) -->
+        <div class="outline-node" style="--depth: 0;">
+          <div class="outline-item">
+            <div class="item-toggle expanded">
+              <svg viewBox="0 0 12 12" fill="currentColor"><path d="M4.5 2L9 6l-4.5 4V2z"/></svg>
+            </div>
+            <div class="item-text">Search and filtering</div>
+          </div>
+          <div class="outline-children">
+            <!-- 4.1 -->
+            <div class="outline-node" style="--depth: 1;">
+              <div class="outline-item">
+                <div class="item-bullet"></div>
+                <div class="item-text">Full-text search across all lists</div>
+              </div>
+            </div>
+            <!-- 4.2 -->
+            <div class="outline-node" style="--depth: 1;">
+              <div class="outline-item">
+                <div class="item-bullet"></div>
+                <div class="item-text">Filter by tags and metadata</div>
+              </div>
+            </div>
+            <!-- 4.3 -->
+            <div class="outline-node" style="--depth: 1;">
+              <div class="outline-item">
+                <div class="item-bullet"></div>
+                <div class="item-text">Saved search queries as virtual lists</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Node 5: API and integrations (collapsed) -->
+        <div class="outline-node" style="--depth: 0;">
+          <div class="outline-item">
+            <div class="item-toggle">
+              <svg viewBox="0 0 12 12" fill="currentColor"><path d="M4.5 2L9 6l-4.5 4V2z"/></svg>
+            </div>
+            <div class="item-text">API and integrations <span class="collapse-hint">4 items</span></div>
+          </div>
+        </div>
+
+        <!-- Node 6: Performance targets -->
+        <div class="outline-node" style="--depth: 0;">
+          <div class="outline-item">
+            <div class="item-toggle expanded">
+              <svg viewBox="0 0 12 12" fill="currentColor"><path d="M4.5 2L9 6l-4.5 4V2z"/></svg>
+            </div>
+            <div class="item-text">Performance targets</div>
+          </div>
+          <div class="outline-children">
+            <!-- 6.1 -->
+            <div class="outline-node" style="--depth: 1;">
+              <div class="outline-item">
+                <div class="item-bullet"></div>
+                <div class="item-text">Sub-50ms keystroke latency at 10k nodes</div>
+              </div>
+            </div>
+            <!-- 6.2 -->
+            <div class="outline-node" style="--depth: 1;">
+              <div class="outline-item">
+                <div class="item-bullet"></div>
+                <div class="item-text">Virtual scrolling for large outlines
+                  <span class="note">Only render visible nodes plus a small buffer zone</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Empty line at the end -->
+        <div class="outline-empty-line" style="--depth: 0;"></div>
+
+      </div>
+    </div>
+
+    <!-- ===== Status Bar ===== -->
+    <div class="status-bar">
+      <span><span class="status-dot"></span> Synced</span>
+      <span>Line 7 of 24</span>
+      <span>Depth 3</span>
+    </div>
+
+  </main>
+
+  <!-- ===== Help Panel ===== -->
+  <div class="help-panel">
+    <div class="help-panel-title">
+      <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm6.5-.25A1.5 1.5 0 119.5 8a1 1 0 01-1 1 .75.75 0 000 1.5 2.5 2.5 0 002.5-2.5 3 3 0 10-6 0 .75.75 0 001.5 0zm.75 5.25a.75.75 0 011.5 0v.5a.75.75 0 01-1.5 0v-.5z"/></svg>
+      Keyboard shortcuts
+    </div>
+    <div class="help-grid">
+      <kbd>Enter</kbd>       <span class="help-desc">New sibling item</span>
+      <kbd>Tab</kbd>         <span class="help-desc">Indent (make child)</span>
+      <kbd>Shift+Tab</kbd>   <span class="help-desc">Outdent (promote)</span>
+      <div class="help-divider"></div>
+      <kbd>Alt+Up</kbd>    <span class="help-desc">Move item up</span>
+      <kbd>Alt+Down</kbd>  <span class="help-desc">Move item down</span>
+      <div class="help-divider"></div>
+      <kbd>Ctrl+.</kbd>      <span class="help-desc">Toggle collapse</span>
+      <kbd>Ctrl+Enter</kbd>  <span class="help-desc">Zoom into item</span>
+      <kbd>Esc</kbd>         <span class="help-desc">Zoom out / back</span>
+      <div class="help-divider"></div>
+      <kbd>Ctrl+K</kbd>      <span class="help-desc">Command palette</span>
+      <kbd>/</kbd>           <span class="help-desc">Search</span>
+    </div>
+    <div class="help-toggle-hint">Press <kbd>?</kbd> to toggle this panel</div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VistaNest — Hierarchical Outliner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@300;400;500;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #0a0c0f;
+    --bg-surface: #10131a;
+    --bg-elevated: #171c27;
+    --bg-hover: #1c2233;
+    --bg-active: #1a2440;
+    --border-dim: #1e2536;
+    --border-subtle: #2a3347;
+    --border-focus: #3d5a99;
+    --text-primary: #c8cdd8;
+    --text-secondary: #7a8399;
+    --text-tertiary: #4a5368;
+    --text-ghost: #2e3648;
+    --accent-blue: #5b8def;
+    --accent-blue-dim: #3a5ca0;
+    --accent-blue-glow: #5b8def33;
+    --accent-amber: #d4a054;
+    --accent-amber-dim: #8a6a3a;
+    --accent-green: #5aad6a;
+    --accent-red: #c45454;
+    --accent-cyan: #54a8b4;
+    --phosphor-glow: 0 0 20px #5b8def18, 0 0 40px #5b8def08;
+    --font-mono: 'IBM Plex Mono', 'JetBrains Mono', monospace;
+    --font-serif: 'Instrument Serif', Georgia, serif;
+    --indent-size: 24px;
+    --item-height: 32px;
+    --scanline-opacity: 0.03;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html {
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* CRT Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 0, 0, var(--scanline-opacity)) 2px,
+      rgba(0, 0, 0, var(--scanline-opacity)) 4px
+    );
+  }
+
+  /* Subtle vignette */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 9998;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.4) 100%);
+  }
+
+  /* === TOP BAR === */
+  .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-dim);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    z-index: 100;
+    gap: 16px;
+  }
+
+  .topbar-brand {
+    font-family: var(--font-serif);
+    font-size: 18px;
+    font-style: italic;
+    color: var(--accent-blue);
+    letter-spacing: -0.5px;
+    white-space: nowrap;
+    text-shadow: 0 0 12px var(--accent-blue-glow);
+  }
+
+  .topbar-sep {
+    width: 1px;
+    height: 16px;
+    background: var(--border-dim);
+  }
+
+  .topbar-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    flex: 1;
+    min-width: 0;
+  }
+
+  .topbar-breadcrumb span {
+    white-space: nowrap;
+  }
+
+  .topbar-breadcrumb .bc-active {
+    color: var(--text-secondary);
+  }
+
+  .topbar-breadcrumb .bc-sep {
+    color: var(--text-ghost);
+    font-size: 9px;
+  }
+
+  .topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .topbar-action {
+    background: none;
+    border: 1px solid var(--border-dim);
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .topbar-action:hover {
+    border-color: var(--border-subtle);
+    color: var(--text-secondary);
+    background: var(--bg-elevated);
+  }
+
+  .topbar-kbd {
+    display: inline-block;
+    font-size: 9px;
+    color: var(--text-ghost);
+    margin-left: 4px;
+  }
+
+  /* === SIDEBAR === */
+  .sidebar {
+    position: fixed;
+    top: 40px;
+    left: 0;
+    bottom: 0;
+    width: 220px;
+    background: var(--bg-surface);
+    border-right: 1px solid var(--border-dim);
+    padding: 12px 0;
+    overflow-y: auto;
+    z-index: 50;
+  }
+
+  .sidebar-section {
+    margin-bottom: 16px;
+  }
+
+  .sidebar-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-ghost);
+    padding: 0 16px;
+    margin-bottom: 6px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 16px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.1s;
+    position: relative;
+  }
+
+  .sidebar-item:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .sidebar-item.active {
+    background: var(--bg-active);
+    color: var(--accent-blue);
+  }
+
+  .sidebar-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 2px;
+    bottom: 2px;
+    width: 2px;
+    background: var(--accent-blue);
+    border-radius: 0 1px 1px 0;
+    box-shadow: 0 0 8px var(--accent-blue-glow);
+  }
+
+  .sidebar-icon {
+    width: 14px;
+    text-align: center;
+    font-size: 11px;
+    opacity: 0.7;
+  }
+
+  .sidebar-count {
+    margin-left: auto;
+    font-size: 10px;
+    color: var(--text-ghost);
+  }
+
+  .sidebar-item.active .sidebar-count {
+    color: var(--accent-blue-dim);
+  }
+
+  /* === MAIN CONTENT === */
+  .main {
+    margin-left: 220px;
+    margin-top: 40px;
+    min-height: calc(100vh - 40px);
+  }
+
+  /* === LIST HEADER === */
+  .list-header {
+    padding: 24px 32px 16px;
+    border-bottom: 1px solid var(--border-dim);
+  }
+
+  .list-title {
+    font-family: var(--font-serif);
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+  }
+
+  .list-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  .list-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .list-meta-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-green);
+    box-shadow: 0 0 6px rgba(90, 173, 106, 0.3);
+  }
+
+  /* === TOOLBAR === */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    padding: 8px 32px;
+    gap: 2px;
+    border-bottom: 1px solid var(--border-dim);
+    background: var(--bg-surface);
+    position: sticky;
+    top: 40px;
+    z-index: 30;
+  }
+
+  .toolbar-btn {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.12s;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .toolbar-btn:hover {
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+  }
+
+  .toolbar-btn.active {
+    background: var(--bg-elevated);
+    color: var(--accent-blue);
+  }
+
+  .toolbar-spacer { flex: 1; }
+
+  .toolbar-sep {
+    width: 1px;
+    height: 14px;
+    background: var(--border-dim);
+    margin: 0 4px;
+  }
+
+  .search-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-base);
+    border: 1px solid var(--border-dim);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    cursor: text;
+    transition: border-color 0.15s;
+  }
+
+  .search-box:hover {
+    border-color: var(--border-subtle);
+  }
+
+  .search-box span {
+    color: var(--text-ghost);
+    font-size: 10px;
+  }
+
+  /* === OUTLINE TREE === */
+  .outline {
+    padding: 8px 0;
+  }
+
+  .outline-item {
+    position: relative;
+    user-select: none;
+  }
+
+  .outline-row {
+    display: flex;
+    align-items: flex-start;
+    min-height: var(--item-height);
+    padding: 3px 32px 3px 0;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.08s;
+  }
+
+  .outline-row:hover {
+    background: var(--bg-hover);
+  }
+
+  /* Depth indentation */
+  .outline-indent {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    height: var(--item-height);
+  }
+
+  .indent-unit {
+    width: var(--indent-size);
+    height: 100%;
+    position: relative;
+  }
+
+  /* Vertical tree lines */
+  .indent-unit.has-line::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--border-dim);
+  }
+
+  /* Collapse/expand toggle */
+  .outline-toggle {
+    width: 20px;
+    height: var(--item-height);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: var(--text-ghost);
+    font-size: 8px;
+    cursor: pointer;
+    transition: color 0.1s, transform 0.15s;
+  }
+
+  .outline-toggle:hover {
+    color: var(--text-secondary);
+  }
+
+  .outline-toggle.expanded {
+    transform: rotate(90deg);
+  }
+
+  .outline-toggle.leaf {
+    visibility: hidden;
+  }
+
+  /* Bullet / checkbox */
+  .outline-bullet {
+    width: 20px;
+    height: var(--item-height);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .bullet-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--text-ghost);
+    transition: all 0.15s;
+  }
+
+  .outline-row:hover .bullet-dot {
+    background: var(--text-tertiary);
+  }
+
+  .bullet-checkbox {
+    width: 13px;
+    height: 13px;
+    border: 1.5px solid var(--text-ghost);
+    border-radius: 2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-size: 9px;
+    color: transparent;
+  }
+
+  .bullet-checkbox.checked {
+    border-color: var(--accent-green);
+    background: rgba(90, 173, 106, 0.15);
+    color: var(--accent-green);
+  }
+
+  .bullet-checkbox.checked::after {
+    content: '✓';
+  }
+
+  .outline-row:hover .bullet-checkbox {
+    border-color: var(--text-tertiary);
+  }
+
+  /* Item text */
+  .outline-text {
+    flex: 1;
+    min-width: 0;
+    padding: 5px 0;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text-primary);
+  }
+
+  .outline-text.completed {
+    text-decoration: line-through;
+    color: var(--text-tertiary);
+    text-decoration-color: var(--text-ghost);
+  }
+
+  /* Notes (secondary text below item) */
+  .outline-note {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    font-style: italic;
+    margin-top: 1px;
+    font-family: var(--font-serif);
+    line-height: 1.4;
+  }
+
+  /* Tags */
+  .outline-tag {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 1px 6px;
+    border-radius: 2px;
+    margin-left: 6px;
+    vertical-align: middle;
+    letter-spacing: 0.3px;
+  }
+
+  .tag-priority {
+    background: rgba(196, 84, 84, 0.15);
+    color: var(--accent-red);
+    border: 1px solid rgba(196, 84, 84, 0.2);
+  }
+
+  .tag-feature {
+    background: rgba(91, 141, 239, 0.12);
+    color: var(--accent-blue);
+    border: 1px solid rgba(91, 141, 239, 0.2);
+  }
+
+  .tag-bug {
+    background: rgba(212, 160, 84, 0.12);
+    color: var(--accent-amber);
+    border: 1px solid rgba(212, 160, 84, 0.2);
+  }
+
+  .tag-info {
+    background: rgba(84, 168, 180, 0.12);
+    color: var(--accent-cyan);
+    border: 1px solid rgba(84, 168, 180, 0.2);
+  }
+
+  /* Item actions (right side) */
+  .outline-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: var(--item-height);
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+
+  .outline-row:hover .outline-actions {
+    opacity: 1;
+  }
+
+  .outline-action-btn {
+    background: none;
+    border: none;
+    color: var(--text-ghost);
+    font-size: 11px;
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.1s;
+  }
+
+  .outline-action-btn:hover {
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+  }
+
+  /* === FOCUSED / ACTIVE ITEM === */
+  .outline-row.focused {
+    background: var(--bg-active);
+    box-shadow: var(--phosphor-glow);
+  }
+
+  .outline-row.focused::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent-blue);
+    box-shadow: 0 0 10px var(--accent-blue-glow), 0 0 20px rgba(91, 141, 239, 0.1);
+  }
+
+  .outline-row.focused .bullet-dot {
+    background: var(--accent-blue);
+    box-shadow: 0 0 8px var(--accent-blue-glow);
+  }
+
+  .outline-row.focused .outline-actions {
+    opacity: 1;
+  }
+
+  /* === EDITING STATE === */
+  .outline-row.editing {
+    background: var(--bg-active);
+  }
+
+  .outline-text-input {
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    width: 100%;
+    line-height: 1.5;
+    caret-color: var(--accent-blue);
+  }
+
+  /* === SELECTED ITEMS (multi-select) === */
+  .outline-row.selected {
+    background: rgba(91, 141, 239, 0.08);
+  }
+
+  .outline-row.selected::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent-blue-dim);
+  }
+
+  /* === COLLAPSED CHILDREN INDICATOR === */
+  .outline-collapsed-count {
+    font-size: 10px;
+    color: var(--text-ghost);
+    margin-left: 8px;
+    padding: 1px 5px;
+    background: var(--bg-elevated);
+    border-radius: 2px;
+    border: 1px solid var(--border-dim);
+  }
+
+  /* === DRAG INDICATOR === */
+  .outline-drop-line {
+    position: absolute;
+    left: 40px;
+    right: 32px;
+    height: 2px;
+    background: var(--accent-blue);
+    box-shadow: 0 0 8px var(--accent-blue-glow);
+    border-radius: 1px;
+    z-index: 10;
+    display: none;
+  }
+
+  /* === STATUS BAR === */
+  .statusbar {
+    position: fixed;
+    bottom: 0;
+    left: 220px;
+    right: 0;
+    height: 24px;
+    background: var(--bg-surface);
+    border-top: 1px solid var(--border-dim);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    font-size: 10px;
+    color: var(--text-tertiary);
+    z-index: 100;
+    gap: 16px;
+  }
+
+  .statusbar-section {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .statusbar-spacer { flex: 1; }
+
+  .status-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+  }
+
+  .status-dot.green {
+    background: var(--accent-green);
+    box-shadow: 0 0 4px rgba(90, 173, 106, 0.4);
+  }
+
+  .statusbar-kbd {
+    color: var(--text-ghost);
+    padding: 0 3px;
+    border: 1px solid var(--border-dim);
+    border-radius: 2px;
+    font-size: 9px;
+    line-height: 1.4;
+  }
+
+  /* === COMMAND PALETTE === */
+  .cmd-palette-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 1000;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 120px;
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.12s ease-out;
+  }
+
+  .cmd-palette-overlay.hidden { display: none; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .cmd-palette {
+    width: 520px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(91, 141, 239, 0.05);
+    overflow: hidden;
+    animation: slideDown 0.15s ease-out;
+  }
+
+  .cmd-input-wrap {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-dim);
+    gap: 10px;
+  }
+
+  .cmd-input-icon {
+    color: var(--accent-blue);
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .cmd-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    caret-color: var(--accent-blue);
+  }
+
+  .cmd-input::placeholder {
+    color: var(--text-ghost);
+  }
+
+  .cmd-results {
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px;
+  }
+
+  .cmd-group-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-ghost);
+    padding: 8px 10px 4px;
+  }
+
+  .cmd-result {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    gap: 10px;
+    transition: background 0.08s;
+  }
+
+  .cmd-result:hover, .cmd-result.active {
+    background: var(--bg-active);
+  }
+
+  .cmd-result.active {
+    box-shadow: inset 2px 0 0 var(--accent-blue);
+  }
+
+  .cmd-result-icon {
+    width: 20px;
+    text-align: center;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .cmd-result-text {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text-primary);
+  }
+
+  .cmd-result-hint {
+    font-size: 11px;
+    color: var(--text-ghost);
+  }
+
+  .cmd-result-kbd {
+    font-size: 10px;
+    color: var(--text-ghost);
+    padding: 2px 5px;
+    border: 1px solid var(--border-dim);
+    border-radius: 3px;
+    background: var(--bg-surface);
+  }
+
+  .cmd-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    border-top: 1px solid var(--border-dim);
+    font-size: 10px;
+    color: var(--text-ghost);
+  }
+
+  .cmd-footer-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* === HELP PANEL (keyboard shortcuts) === */
+  .help-panel {
+    position: fixed;
+    top: 40px;
+    right: 0;
+    bottom: 24px;
+    width: 280px;
+    background: var(--bg-surface);
+    border-left: 1px solid var(--border-dim);
+    padding: 16px;
+    overflow-y: auto;
+    z-index: 40;
+    animation: slideInRight 0.2s ease-out;
+  }
+
+  .help-panel.hidden { display: none; }
+
+  @keyframes slideInRight {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .help-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-ghost);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .help-close {
+    background: none;
+    border: none;
+    color: var(--text-ghost);
+    cursor: pointer;
+    font-size: 14px;
+    transition: color 0.1s;
+  }
+
+  .help-close:hover { color: var(--text-secondary); }
+
+  .help-group {
+    margin-bottom: 16px;
+  }
+
+  .help-group-title {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border-dim);
+  }
+
+  .help-shortcut {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 0;
+    font-size: 11px;
+  }
+
+  .help-shortcut-label {
+    color: var(--text-secondary);
+  }
+
+  .help-shortcut-keys {
+    display: flex;
+    gap: 3px;
+  }
+
+  .help-kbd {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    padding: 1px 5px;
+    border: 1px solid var(--border-dim);
+    border-radius: 3px;
+    background: var(--bg-base);
+    min-width: 18px;
+    text-align: center;
+  }
+
+  /* === ANIMATIONS === */
+  @keyframes itemAppear {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .outline-item {
+    animation: itemAppear 0.2s ease-out both;
+  }
+
+  /* Staggered delays generated via nth-child */
+  .outline-item:nth-child(1) { animation-delay: 0.02s; }
+  .outline-item:nth-child(2) { animation-delay: 0.04s; }
+  .outline-item:nth-child(3) { animation-delay: 0.06s; }
+  .outline-item:nth-child(4) { animation-delay: 0.08s; }
+  .outline-item:nth-child(5) { animation-delay: 0.10s; }
+  .outline-item:nth-child(6) { animation-delay: 0.12s; }
+  .outline-item:nth-child(7) { animation-delay: 0.14s; }
+  .outline-item:nth-child(8) { animation-delay: 0.16s; }
+  .outline-item:nth-child(9) { animation-delay: 0.18s; }
+  .outline-item:nth-child(10) { animation-delay: 0.20s; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-dim); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-subtle); }
+
+  /* Selection highlight */
+  ::selection {
+    background: rgba(91, 141, 239, 0.25);
+    color: var(--text-primary);
+  }
+
+  /* Responsive: hide sidebar on small */
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { margin-left: 0; }
+    .statusbar { left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar">
+  <div class="topbar-brand">VistaNest</div>
+  <div class="topbar-sep"></div>
+  <div class="topbar-breadcrumb">
+    <span>My Lists</span>
+    <span class="bc-sep">&#9656;</span>
+    <span class="bc-active">Product Roadmap Q1 2026</span>
+  </div>
+  <div class="topbar-actions">
+    <button class="topbar-action">
+      Share
+    </button>
+    <button class="topbar-action" id="cmdPaletteBtn">
+      &#x2318; <span class="topbar-kbd">Ctrl+K</span>
+    </button>
+    <button class="topbar-action" id="helpBtn">
+      ? <span class="topbar-kbd">?</span>
+    </button>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-label">Lists</div>
+    <div class="sidebar-item">
+      <span class="sidebar-icon">&#9733;</span>
+      Inbox
+      <span class="sidebar-count">3</span>
+    </div>
+    <div class="sidebar-item active">
+      <span class="sidebar-icon">&#9670;</span>
+      Product Roadmap
+      <span class="sidebar-count">47</span>
+    </div>
+    <div class="sidebar-item">
+      <span class="sidebar-icon">&#9670;</span>
+      Sprint Backlog
+      <span class="sidebar-count">23</span>
+    </div>
+    <div class="sidebar-item">
+      <span class="sidebar-icon">&#9670;</span>
+      Research Notes
+      <span class="sidebar-count">156</span>
+    </div>
+    <div class="sidebar-item">
+      <span class="sidebar-icon">&#9670;</span>
+      Meeting Minutes
+      <span class="sidebar-count">12</span>
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Tags</div>
+    <div class="sidebar-item">
+      <span class="sidebar-icon" style="color: var(--accent-red);">&#9679;</span>
+      Priority
+      <span class="sidebar-count">8</span>
+    </div>
+    <div class="sidebar-item">
+      <span class="sidebar-icon" style="color: var(--accent-blue);">&#9679;</span>
+      Feature
+      <span class="sidebar-count">14</span>
+    </div>
+    <div class="sidebar-item">
+      <span class="sidebar-icon" style="color: var(--accent-amber);">&#9679;</span>
+      Bug
+      <span class="sidebar-count">5</span>
+    </div>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-label">Recent</div>
+    <div class="sidebar-item">
+      <span class="sidebar-icon" style="color: var(--text-ghost);">&#8635;</span>
+      API Design Spec
+    </div>
+    <div class="sidebar-item">
+      <span class="sidebar-icon" style="color: var(--text-ghost);">&#8635;</span>
+      Hiring Pipeline
+    </div>
+  </div>
+</div>
+
+<!-- Main Content -->
+<div class="main">
+  <!-- List Header -->
+  <div class="list-header">
+    <div class="list-title">Product Roadmap Q1 2026</div>
+    <div class="list-meta">
+      <div class="list-meta-item"><span class="list-meta-dot"></span> 47 items</div>
+      <div class="list-meta-item">14 completed</div>
+      <div class="list-meta-item">Updated 2 min ago</div>
+    </div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="toolbar-btn active">All</button>
+    <button class="toolbar-btn">Open</button>
+    <button class="toolbar-btn">Done</button>
+    <div class="toolbar-sep"></div>
+    <button class="toolbar-btn">&#9660; Collapse All</button>
+    <button class="toolbar-btn">&#9650; Expand All</button>
+    <div class="toolbar-spacer"></div>
+    <div class="search-box">
+      &#128269; <span>Filter... Ctrl+F</span>
+    </div>
+  </div>
+
+  <!-- Outline Tree -->
+  <div class="outline" id="outlineTree"></div>
+</div>
+
+<!-- Status Bar -->
+<div class="statusbar">
+  <div class="statusbar-section">
+    <span class="status-dot green"></span>
+    Synced
+  </div>
+  <div class="statusbar-section">
+    Item 5 of 47
+  </div>
+  <div class="statusbar-section">
+    Depth: 2
+  </div>
+  <div class="statusbar-spacer"></div>
+  <div class="statusbar-section">
+    <span class="statusbar-kbd">j</span><span class="statusbar-kbd">k</span> navigate
+    <span class="statusbar-kbd">Enter</span> edit
+    <span class="statusbar-kbd">Tab</span> indent
+    <span class="statusbar-kbd">?</span> help
+  </div>
+</div>
+
+<!-- Command Palette -->
+<div class="cmd-palette-overlay hidden" id="cmdPalette">
+  <div class="cmd-palette">
+    <div class="cmd-input-wrap">
+      <span class="cmd-input-icon">&#9656;</span>
+      <input class="cmd-input" type="text" placeholder="Type a command..." autofocus>
+    </div>
+    <div class="cmd-results">
+      <div class="cmd-group-label">Actions</div>
+      <div class="cmd-result active">
+        <span class="cmd-result-icon">+</span>
+        <span class="cmd-result-text">Add item below</span>
+        <span class="cmd-result-kbd">Enter</span>
+      </div>
+      <div class="cmd-result">
+        <span class="cmd-result-icon">&#8677;</span>
+        <span class="cmd-result-text">Indent item</span>
+        <span class="cmd-result-kbd">Tab</span>
+      </div>
+      <div class="cmd-result">
+        <span class="cmd-result-icon">&#8676;</span>
+        <span class="cmd-result-text">Outdent item</span>
+        <span class="cmd-result-kbd">Shift+Tab</span>
+      </div>
+      <div class="cmd-result">
+        <span class="cmd-result-icon">&#10003;</span>
+        <span class="cmd-result-text">Toggle checkbox</span>
+        <span class="cmd-result-kbd">Ctrl+.</span>
+      </div>
+      <div class="cmd-result">
+        <span class="cmd-result-icon">&#9650;&#9660;</span>
+        <span class="cmd-result-text">Move item up/down</span>
+        <span class="cmd-result-kbd">Alt+&#9650;/&#9660;</span>
+      </div>
+      <div class="cmd-group-label">Navigation</div>
+      <div class="cmd-result">
+        <span class="cmd-result-icon">&#9670;</span>
+        <span class="cmd-result-text">Go to list...</span>
+        <span class="cmd-result-kbd">Ctrl+L</span>
+      </div>
+      <div class="cmd-result">
+        <span class="cmd-result-icon">&#128269;</span>
+        <span class="cmd-result-text">Search all lists</span>
+        <span class="cmd-result-kbd">Ctrl+Shift+F</span>
+      </div>
+      <div class="cmd-result">
+        <span class="cmd-result-icon">&#8599;</span>
+        <span class="cmd-result-text">Zoom into item</span>
+        <span class="cmd-result-kbd">Ctrl+&#8594;</span>
+      </div>
+    </div>
+    <div class="cmd-footer">
+      <div class="cmd-footer-item"><span class="statusbar-kbd">&#9650;&#9660;</span> navigate</div>
+      <div class="cmd-footer-item"><span class="statusbar-kbd">Enter</span> select</div>
+      <div class="cmd-footer-item"><span class="statusbar-kbd">Esc</span> close</div>
+    </div>
+  </div>
+</div>
+
+<!-- Help Panel -->
+<div class="help-panel hidden" id="helpPanel">
+  <div class="help-title">
+    Keyboard Shortcuts
+    <button class="help-close" id="helpClose">&#10005;</button>
+  </div>
+
+  <div class="help-group">
+    <div class="help-group-title">Navigation</div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Move down</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">j</span> or <span class="help-kbd">&#9660;</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Move up</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">k</span> or <span class="help-kbd">&#9650;</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Zoom in</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Ctrl</span><span class="help-kbd">&#8594;</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Zoom out</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Ctrl</span><span class="help-kbd">&#8592;</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Jump to parent</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">u</span></div>
+    </div>
+  </div>
+
+  <div class="help-group">
+    <div class="help-group-title">Editing</div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Edit item</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Enter</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">New item below</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">o</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">New item above</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">O</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Delete item</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Ctrl</span><span class="help-kbd">Del</span></div>
+    </div>
+  </div>
+
+  <div class="help-group">
+    <div class="help-group-title">Organization</div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Indent</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Tab</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Outdent</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Shift</span><span class="help-kbd">Tab</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Move up</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Alt</span><span class="help-kbd">&#9650;</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Move down</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Alt</span><span class="help-kbd">&#9660;</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Toggle checkbox</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Ctrl</span><span class="help-kbd">.</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Collapse/Expand</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Space</span></div>
+    </div>
+  </div>
+
+  <div class="help-group">
+    <div class="help-group-title">Selection</div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Select item</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">x</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Select all</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Ctrl</span><span class="help-kbd">a</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Copy items</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Ctrl</span><span class="help-kbd">c</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Cut items</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Ctrl</span><span class="help-kbd">x</span></div>
+    </div>
+    <div class="help-shortcut">
+      <span class="help-shortcut-label">Paste items</span>
+      <div class="help-shortcut-keys"><span class="help-kbd">Ctrl</span><span class="help-kbd">v</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Outline data model
+const outlineData = [
+  {
+    text: 'Authentication & User Management',
+    hasCheckbox: false, checked: false, collapsed: false,
+    tags: [{ label: 'priority', cls: 'tag-priority' }],
+    note: null,
+    children: [
+      {
+        text: 'OAuth 2.0 integration with Google & GitHub',
+        hasCheckbox: true, checked: true, collapsed: false,
+        tags: [{ label: 'feature', cls: 'tag-feature' }],
+        note: 'Use passport.js strategy pattern',
+        children: [
+          { text: 'Set up OAuth client credentials', hasCheckbox: true, checked: true, collapsed: false, tags: [], note: null, children: [] },
+          { text: 'Implement callback handlers', hasCheckbox: true, checked: true, collapsed: false, tags: [], note: null, children: [] },
+          { text: 'Token refresh mechanism', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+        ]
+      },
+      {
+        text: 'Role-based access control (RBAC)',
+        hasCheckbox: true, checked: false, collapsed: false,
+        tags: [{ label: 'feature', cls: 'tag-feature' }],
+        note: null,
+        children: [
+          { text: 'Define role hierarchy: admin > editor > viewer', hasCheckbox: false, checked: false, collapsed: false, tags: [], note: null, children: [] },
+          { text: 'Middleware for permission checks', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+          { text: 'Share lists with granular permissions', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+        ]
+      },
+      {
+        text: 'Session management & security hardening',
+        hasCheckbox: true, checked: false, collapsed: true,
+        tags: [],
+        note: null,
+        collapsedCount: 4,
+        children: [
+          { text: 'JWT with rotation', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+          { text: 'Rate limiting on auth endpoints', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+          { text: 'CSRF protection', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+          { text: 'Audit logging', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+        ]
+      },
+    ]
+  },
+  {
+    text: 'Real-time Collaboration Engine',
+    hasCheckbox: false, checked: false, collapsed: false,
+    tags: [{ label: 'priority', cls: 'tag-priority' }, { label: 'feature', cls: 'tag-feature' }],
+    note: 'Core differentiator — needs to be rock solid',
+    children: [
+      {
+        text: 'CRDT-based conflict resolution',
+        hasCheckbox: true, checked: false, collapsed: false,
+        tags: [],
+        note: 'Evaluate Yjs vs Automerge',
+        children: [
+          { text: 'Prototype with Yjs', hasCheckbox: true, checked: true, collapsed: false, tags: [], note: null, children: [] },
+          { text: 'Benchmark merge performance at scale', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+        ]
+      },
+      {
+        text: 'WebSocket infrastructure',
+        hasCheckbox: true, checked: false, collapsed: false,
+        tags: [],
+        note: null,
+        children: [
+          { text: 'Connection pooling & reconnection logic', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+          { text: 'Presence indicators (who is online)', hasCheckbox: true, checked: false, collapsed: false, tags: [{ label: 'info', cls: 'tag-info' }], note: null, children: [] },
+          { text: 'Cursor sharing between collaborators', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+        ]
+      },
+    ]
+  },
+  {
+    text: 'Keyboard Navigation System',
+    hasCheckbox: false, checked: false, collapsed: false,
+    tags: [{ label: 'priority', cls: 'tag-priority' }],
+    note: null,
+    children: [
+      { text: 'Vim-like modal keybindings (normal / insert / visual)', hasCheckbox: true, checked: true, collapsed: false, tags: [], note: 'j/k/h/l navigation, o/O insert, v visual select', children: [] },
+      { text: 'Command palette with fuzzy search', hasCheckbox: true, checked: false, collapsed: false, tags: [{ label: 'feature', cls: 'tag-feature' }], note: null, children: [] },
+      { text: 'Customizable keybinding overrides', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+    ]
+  },
+  {
+    text: 'Export & Import Pipeline',
+    hasCheckbox: false, checked: false, collapsed: true,
+    tags: [],
+    note: null,
+    collapsedCount: 5,
+    children: [
+      { text: 'OPML import/export', hasCheckbox: true, checked: true, collapsed: false, tags: [], note: null, children: [] },
+      { text: 'Markdown export with hierarchy', hasCheckbox: true, checked: true, collapsed: false, tags: [], note: null, children: [] },
+      { text: 'JSON API for programmatic access', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+      { text: 'CSV flat export', hasCheckbox: true, checked: false, collapsed: false, tags: [], note: null, children: [] },
+      { text: 'Checkvist format compatibility', hasCheckbox: true, checked: false, collapsed: false, tags: [{ label: 'bug', cls: 'tag-bug' }], note: null, children: [] },
+    ]
+  },
+  {
+    text: 'Performance & Infrastructure',
+    hasCheckbox: false, checked: false, collapsed: false,
+    tags: [],
+    note: null,
+    children: [
+      {
+        text: 'Virtualized rendering for large outlines (10k+ nodes)',
+        hasCheckbox: true, checked: false, collapsed: false,
+        tags: [{ label: 'priority', cls: 'tag-priority' }],
+        note: null,
+        children: []
+      },
+      { text: 'Offline-first with service worker sync', hasCheckbox: true, checked: false, collapsed: false, tags: [{ label: 'feature', cls: 'tag-feature' }], note: null, children: [] },
+      {
+        text: 'Database migration to edge-native solution',
+        hasCheckbox: true, checked: false, collapsed: false,
+        tags: [{ label: 'info', cls: 'tag-info' }],
+        note: 'Turso / Cloudflare D1 evaluation pending',
+        children: []
+      },
+    ]
+  },
+];
+
+// Track which item index is focused (flat index among visible items)
+let focusedIndex = 4;
+
+function renderOutline() {
+  const container = document.getElementById('outlineTree');
+  const html = [];
+  let flatIndex = 0;
+
+  function renderItem(item, depth, parentLines) {
+    const currentIndex = flatIndex++;
+    const isFocused = currentIndex === focusedIndex;
+    const isSelected = currentIndex === 7 || currentIndex === 8; // Demo: items 7,8 selected
+    const isEditing = false;
+    const hasChildren = item.children && item.children.length > 0;
+    const isCollapsed = item.collapsed;
+
+    // Row classes
+    const rowClasses = ['outline-row'];
+    if (isFocused) rowClasses.push('focused');
+    if (isSelected) rowClasses.push('selected');
+    if (isEditing) rowClasses.push('editing');
+
+    html.push('<div class="outline-item">');
+    html.push('<div class="' + rowClasses.join(' ') + '">');
+
+    // Indent units
+    html.push('<div class="outline-indent">');
+    for (let i = 0; i < depth; i++) {
+      const hasLine = parentLines[i];
+      html.push('<div class="indent-unit' + (hasLine ? ' has-line' : '') + '"></div>');
+    }
+    html.push('</div>');
+
+    // Toggle
+    if (hasChildren) {
+      const toggleCls = isCollapsed ? '' : ' expanded';
+      html.push('<div class="outline-toggle' + toggleCls + '">&#9656;</div>');
+    } else {
+      html.push('<div class="outline-toggle leaf">&#9656;</div>');
+    }
+
+    // Bullet or checkbox
+    html.push('<div class="outline-bullet">');
+    if (item.hasCheckbox) {
+      html.push('<div class="bullet-checkbox' + (item.checked ? ' checked' : '') + '"></div>');
+    } else {
+      html.push('<div class="bullet-dot"></div>');
+    }
+    html.push('</div>');
+
+    // Text
+    const textCls = item.checked ? ' completed' : '';
+    html.push('<div class="outline-text' + textCls + '">');
+    html.push(escapeHtml(item.text));
+
+    // Tags
+    if (item.tags) {
+      for (const tag of item.tags) {
+        html.push(' <span class="outline-tag ' + tag.cls + '">' + tag.label + '</span>');
+      }
+    }
+
+    // Collapsed count
+    if (isCollapsed && item.collapsedCount) {
+      html.push(' <span class="outline-collapsed-count">+' + item.collapsedCount + '</span>');
+    }
+
+    // Note
+    if (item.note) {
+      html.push('<div class="outline-note">' + escapeHtml(item.note) + '</div>');
+    }
+
+    html.push('</div>');
+
+    // Actions
+    html.push('<div class="outline-actions">');
+    html.push('<button class="outline-action-btn" title="Add child">+</button>');
+    html.push('<button class="outline-action-btn" title="More actions">&#8943;</button>');
+    html.push('</div>');
+
+    html.push('</div>'); // .outline-row
+    html.push('</div>'); // .outline-item
+
+    // Render children if not collapsed
+    if (hasChildren && !isCollapsed) {
+      for (let i = 0; i < item.children.length; i++) {
+        const isLast = i === item.children.length - 1;
+        const newParentLines = parentLines.concat([!isLast]);
+        renderItem(item.children[i], depth + 1, newParentLines);
+      }
+    }
+  }
+
+  for (let i = 0; i < outlineData.length; i++) {
+    renderItem(outlineData[i], 0, []);
+  }
+
+  container.innerHTML = html.join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// Command palette toggle
+const cmdPalette = document.getElementById('cmdPalette');
+const cmdPaletteBtn = document.getElementById('cmdPaletteBtn');
+
+function toggleCmdPalette() {
+  cmdPalette.classList.toggle('hidden');
+  if (!cmdPalette.classList.contains('hidden')) {
+    const input = cmdPalette.querySelector('.cmd-input');
+    if (input) setTimeout(function() { input.focus(); }, 50);
+  }
+}
+
+cmdPaletteBtn.addEventListener('click', toggleCmdPalette);
+
+cmdPalette.addEventListener('click', function(e) {
+  if (e.target === cmdPalette) {
+    cmdPalette.classList.add('hidden');
+  }
+});
+
+// Help panel toggle
+const helpPanel = document.getElementById('helpPanel');
+const helpBtn = document.getElementById('helpBtn');
+const helpClose = document.getElementById('helpClose');
+
+helpBtn.addEventListener('click', function() {
+  helpPanel.classList.toggle('hidden');
+});
+
+helpClose.addEventListener('click', function() {
+  helpPanel.classList.add('hidden');
+});
+
+// Global keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  // Ctrl+K: command palette
+  if (e.ctrlKey && e.key === 'k') {
+    e.preventDefault();
+    toggleCmdPalette();
+    return;
+  }
+
+  // Escape: close overlays
+  if (e.key === 'Escape') {
+    if (!cmdPalette.classList.contains('hidden')) {
+      cmdPalette.classList.add('hidden');
+      return;
+    }
+    if (!helpPanel.classList.contains('hidden')) {
+      helpPanel.classList.add('hidden');
+      return;
+    }
+  }
+
+  // Don't handle nav keys if palette is open or focus is in an input
+  if (!cmdPalette.classList.contains('hidden')) return;
+  if (document.activeElement.tagName === 'INPUT') return;
+
+  // j/k navigation
+  const visibleCount = document.querySelectorAll('.outline-row').length;
+
+  if (e.key === 'j' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (focusedIndex < visibleCount - 1) {
+      focusedIndex++;
+      renderOutline();
+    }
+  }
+
+  if (e.key === 'k' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (focusedIndex > 0) {
+      focusedIndex--;
+      renderOutline();
+    }
+  }
+
+  // ? for help
+  if (e.key === '?' && !e.ctrlKey && !e.altKey) {
+    helpPanel.classList.toggle('hidden');
+  }
+});
+
+// Initial render
+renderOutline();
+</script>
+
+</body>
+</html>
