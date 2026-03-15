@@ -73,7 +73,8 @@ export const OutlineItem = memo(function OutlineItem({
       <span
         className="flex-1 flex items-baseline flex-wrap gap-2"
         style={{
-          fontSize: 16,
+          fontSize: depth === 0 ? 17 : 16,
+          fontWeight: depth === 0 ? 500 : 400,
           lineHeight: 1.75,
           letterSpacing: '-0.008em',
           minHeight: 28,

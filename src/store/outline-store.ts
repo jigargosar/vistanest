@@ -374,7 +374,7 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
   setFocused: (id: string) => set({ focusedId: id }),
 }))
 
-/** Derive visible items from store state. Use in components as a selector. */
-export function selectVisibleItems(state: OutlineState): VisibleItem[] {
+/** Derive visible items from items array. Use with useMemo in components. */
+export function selectVisibleItems(state: Pick<OutlineState, 'items'>): VisibleItem[] {
   return buildVisibleItems(state.items)
 }

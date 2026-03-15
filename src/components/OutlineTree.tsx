@@ -1,10 +1,11 @@
+import { useMemo } from 'react'
 import { useOutlineStore, selectVisibleItems } from '../store/outline-store'
 import { OutlineItem } from './OutlineItem'
 
 export function OutlineTree() {
-  const visibleItems = useOutlineStore(selectVisibleItems)
   const items = useOutlineStore((s) => s.items)
   const focusedId = useOutlineStore((s) => s.focusedId)
+  const visibleItems = useMemo(() => selectVisibleItems({ items }), [items])
 
   const totalItems = items.length
   const completedItems = items.filter((i) => i.done).length
@@ -14,7 +15,7 @@ export function OutlineTree() {
       className="px-6 pb-30"
       style={{ marginTop: 'var(--topbar-h)', paddingTop: 40 }}
     >
-      <div className="mx-auto" style={{ maxWidth: 'var(--content-width)' }}>
+      <div className="mx-auto px-6" style={{ maxWidth: 'var(--content-width)' }}>
         {/* List header */}
         <div
           className="mb-9 pb-5"
@@ -40,7 +41,7 @@ export function OutlineTree() {
         </div>
 
         {/* Outline items */}
-        <div>
+        <div className="flex flex-col gap-0.5">
           {visibleItems.map((visItem, index) => (
             <div
               key={visItem.item.id}
