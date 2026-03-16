@@ -20,10 +20,15 @@ export interface VisibleItem {
   hasChildren: boolean
 }
 
+const MAX_UNDO_HISTORY = 50
+
 interface OutlineState {
   items: OutlineItem[]
   focusedId: string | null
   editingId: string | null
+  filterQuery: string
+  commandPaletteOpen: boolean
+
   toggleCollapse: (id: string) => void
   toggleDone: (id: string) => void
   moveFocus: (direction: 'up' | 'down') => void
@@ -37,6 +42,9 @@ interface OutlineState {
   indentItem: (id: string) => void
   outdentItem: (id: string) => void
   moveItem: (id: string, direction: 'up' | 'down') => void
+  undo: () => void
+  setFilterQuery: (query: string) => void
+  setCommandPaletteOpen: (open: boolean) => void
 }
 
 // === Sample Data ===
@@ -396,12 +404,29 @@ function buildVisibleItems(items: OutlineItem[]): VisibleItem[] {
   return result
 }
 
+// === Undo History (in-memory only) ===
+
+const undoHistory: OutlineItem[][] = []
+
+function pushUndo(items: OutlineItem[]) {
+  undoHistory.push(items.map((item) => ({ ...item })))
+  if (undoHistory.length > MAX_UNDO_HISTORY) {
+    undoHistory.shift()
+  }
+}
+
+function popUndo(): OutlineItem[] | undefined {
+  return undoHistory.pop()
+}
+
 // === Store ===
 
 export const useOutlineStore = create<OutlineState>((set, get) => ({
   items: loadItems(),
   focusedId: '1-3',
   editingId: null,
+  filterQuery: '',
+  commandPaletteOpen: false,
 
   toggleCollapse: (id: string) =>
     set((state) => {
@@ -414,6 +439,7 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
 
   toggleDone: (id: string) =>
     set((state) => {
+      pushUndo(state.items)
       const items = state.items.map((item) =>
         item.id === id ? { ...item, done: !item.done } : item,
       )
@@ -449,6 +475,7 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
 
   updateItemText: (id: string, text: string) =>
     set((state) => {
+      pushUndo(state.items)
       const items = state.items.map((item) =>
         item.id === id ? { ...item, text } : item,
       )
@@ -460,6 +487,8 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
     const state = get()
     const current = state.items.find((item) => item.id === afterId)
     if (!current) return
+
+    pushUndo(state.items)
 
     const siblings = getSiblings(state.items, current.parentId)
     const currentIndex = siblings.findIndex((s) => s.id === afterId)
@@ -493,6 +522,8 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
     const parent = state.items.find((item) => item.id === parentId)
     if (!parent) return
 
+    pushUndo(state.items)
+
     const children = getSiblings(state.items, parentId)
     const newSortOrder = children.length
 
@@ -521,6 +552,8 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
     const current = state.items.find((item) => item.id === id)
     if (!current) return
 
+    pushUndo(state.items)
+
     // Find previous visible item to focus after deletion
     const visible = buildVisibleItems(state.items)
     const visibleIndex = visible.findIndex((v) => v.item.id === id)
@@ -548,6 +581,8 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
 
     // Can't indent if there's no previous sibling
     if (currentIndex <= 0) return
+
+    pushUndo(state.items)
 
     const newParent = siblings[currentIndex - 1]
     const newParentChildren = getSiblings(state.items, newParent.id)
@@ -579,6 +614,8 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
 
     const parent = state.items.find((item) => item.id === current.parentId)
     if (!parent) return
+
+    pushUndo(state.items)
 
     // New parent is the grandparent
     const grandparentId = parent.parentId
@@ -620,6 +657,8 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
     if (direction === 'up' && currentIndex <= 0) return
     if (direction === 'down' && currentIndex >= siblings.length - 1) return
 
+    pushUndo(state.items)
+
     const swapIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
     const swapItem = siblings[swapIndex]
 
@@ -636,9 +675,90 @@ export const useOutlineStore = create<OutlineState>((set, get) => ({
     saveItems(items)
     set({ items })
   },
+
+  undo: () => {
+    const previous = popUndo()
+    if (!previous) return
+    saveItems(previous)
+    set({ items: previous, editingId: null })
+  },
+
+  setFilterQuery: (query: string) => set({ filterQuery: query }),
+
+  setCommandPaletteOpen: (open: boolean) => set({ commandPaletteOpen: open }),
 }))
 
-/** Derive visible items from items array. Use with useMemo in components. */
-export function selectVisibleItems(state: Pick<OutlineState, 'items'>): VisibleItem[] {
+/** Collect all ancestor IDs for a given item */
+function getAncestorIds(items: OutlineItem[], itemId: string): Set<string> {
+  const ancestors = new Set<string>()
+  let current = items.find((i) => i.id === itemId)
+  while (current?.parentId) {
+    ancestors.add(current.parentId)
+    current = items.find((i) => i.id === current!.parentId)
+  }
+  return ancestors
+}
+
+/** Build visible items filtered by a search query. Matching items and their ancestors are shown. */
+function buildFilteredVisibleItems(items: OutlineItem[], query: string): VisibleItem[] {
+  const lowerQuery = query.toLowerCase()
+
+  // Find all items whose text matches
+  const matchingIds = new Set<string>()
+  for (const item of items) {
+    if (item.text.toLowerCase().includes(lowerQuery)) {
+      matchingIds.add(item.id)
+    }
+  }
+
+  // Also include all ancestors of matching items so context is visible
+  const visibleIds = new Set(matchingIds)
+  for (const id of matchingIds) {
+    for (const ancestorId of getAncestorIds(items, id)) {
+      visibleIds.add(ancestorId)
+    }
+  }
+
+  // Build the tree, but only include items in the visible set.
+  // Ancestors that are collapsed should be treated as expanded when filtering.
+  const childrenMap = new Map<string | null, OutlineItem[]>()
+  for (const item of items) {
+    if (!visibleIds.has(item.id)) continue
+    const siblings = childrenMap.get(item.parentId) ?? []
+    siblings.push(item)
+    childrenMap.set(item.parentId, siblings)
+  }
+
+  for (const siblings of childrenMap.values()) {
+    siblings.sort((a, b) => a.sortOrder - b.sortOrder)
+  }
+
+  const result: VisibleItem[] = []
+
+  function walk(parentId: string | null, depth: number) {
+    const children = childrenMap.get(parentId) ?? []
+    for (const item of children) {
+      const itemChildren = childrenMap.get(item.id) ?? []
+      const hasChildren = itemChildren.length > 0
+      result.push({ item, depth, childCount: itemChildren.length, hasChildren })
+      // Always expand ancestors during filtering
+      if (hasChildren) {
+        walk(item.id, depth + 1)
+      }
+    }
+  }
+
+  walk(null, 0)
+  return result
+}
+
+/** Derive visible items from items array, optionally filtered by query. */
+export function selectVisibleItems(
+  state: Pick<OutlineState, 'items'>,
+  filterQuery?: string,
+): VisibleItem[] {
+  if (filterQuery && filterQuery.trim().length > 0) {
+    return buildFilteredVisibleItems(state.items, filterQuery.trim())
+  }
   return buildVisibleItems(state.items)
 }

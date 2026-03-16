@@ -1,9 +1,12 @@
 const hints = [
   { keys: ['J', 'K'], label: 'navigate' },
-  { keys: ['Enter'], label: 'edit' },
+  { keys: ['Enter'], label: 'new item' },
+  { keys: ['ee'], label: 'edit' },
   { keys: ['Tab'], label: 'indent' },
   { keys: ['Space'], label: 'toggle' },
-  { keys: ['Ctrl+K'], label: 'command palette' },
+  { keys: ['x'], label: 'done' },
+  { keys: ['Ctrl+Z'], label: 'undo' },
+  { keys: ['Ctrl+K'], label: 'commands' },
 ] as const
 
 export function BottomBar() {

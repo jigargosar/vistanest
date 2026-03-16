@@ -133,6 +133,14 @@ kbd {
   padding: 1px 5px;
 }
 
+/* === COMMAND PALETTE === */
+.command-palette-item {
+  background: transparent;
+}
+.command-palette-item:hover {
+  background: var(--bg-hover);
+}
+
 /* === ANIMATIONS === */
 @keyframes fadeInUp {
   from {

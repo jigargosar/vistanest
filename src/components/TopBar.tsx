@@ -1,8 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import { ThemeSwitcher } from './ThemeSwitcher'
+import { useOutlineStore } from '../store/outline-store'
 
 export function TopBar() {
-  const [searchFocused, setSearchFocused] = useState(false)
+  const filterQuery = useOutlineStore((s) => s.filterQuery)
+  const setFilterQuery = useOutlineStore((s) => s.setFilterQuery)
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -19,6 +21,19 @@ export function TopBar() {
     window.addEventListener('keydown', handleSlash)
     return () => window.removeEventListener('keydown', handleSlash)
   }, [])
+
+  const handleSearchKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        setFilterQuery('')
+        searchRef.current?.blur()
+      }
+    },
+    [setFilterQuery],
+  )
+
+  const isFocused = filterQuery.length > 0 || document.activeElement === searchRef.current
 
   return (
     <header
@@ -56,12 +71,13 @@ export function TopBar() {
           ref={searchRef}
           type="text"
           placeholder="Search items..."
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
-          className="w-full h-8 rounded-md pl-8 pr-10 text-[13px] outline-none transition-colors"
+          value={filterQuery}
+          onChange={(e) => setFilterQuery(e.target.value)}
+          onKeyDown={handleSearchKeyDown}
+          className="w-full h-8 rounded-md pl-8 pr-10 text-[13px] outline-none"
           style={{
-            background: searchFocused ? 'var(--bg-focus)' : 'var(--bg-raised)',
-            border: `1px solid ${searchFocused ? 'var(--accent-border)' : 'var(--border-subtle)'}`,
+            background: isFocused ? 'var(--bg-focus)' : 'var(--bg-raised)',
+            border: `1px solid ${isFocused ? 'var(--accent-border)' : 'var(--border-subtle)'}`,
             fontFamily: 'var(--font-body)',
             color: 'var(--text-primary)',
           }}
