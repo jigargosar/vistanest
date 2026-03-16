@@ -14,7 +14,8 @@
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
-        "jsx": "react-jsx"
+        "jsx": "react-jsx",
+        "preserveWatchOutput": true
     },
     "include": ["src"]
 }
