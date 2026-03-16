@@ -22,19 +22,16 @@ export const ThemeSwitcher = observer(function ThemeSwitcher() {
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [open])
-
-  useEffect(() => {
-    if (!open) return
-
     function handleEscape(e: KeyboardEvent) {
       if (e.key === 'Escape') setOpen(false)
     }
 
+    document.addEventListener('mousedown', handleClickOutside)
     document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
   }, [open])
 
   return (

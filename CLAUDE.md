@@ -21,7 +21,9 @@ pnpm dev              # Start Vite dev server (HTTPS, hot reload)
 pnpm build            # Production build
 pnpm typecheck        # Type check without emit
 pnpm typecheck:watch  # Type check in watch mode
-pnpm test:e2e         # Run Puppeteer smoke tests (requires dev server running)
+pnpm test:e2e         # Run Playwright e2e tests (starts its own dev server)
+pnpm test:e2e:ui      # Playwright interactive UI
+pnpm test:e2e:update  # Update visual snapshots
 ```
 
 # Stack
@@ -32,7 +34,7 @@ pnpm test:e2e         # Run Puppeteer smoke tests (requires dev server running)
 4. `fractional-indexing` for item ordering (`sortKey: string`)
 5. `@react-hooks-library/core` for `useEventListener` and other hooks
 6. CSS variables for theming — themes are JS objects that apply to `:root`
-7. Puppeteer + Vitest for e2e smoke tests
+7. Playwright for e2e tests with visual snapshot regression
 
 # Architecture
 
