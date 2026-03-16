@@ -1,11 +1,12 @@
 import { makeAutoObservable, reaction, toJS } from 'mobx'
+import { generateKeyBetween } from 'fractional-indexing'
 
-// === Types (shared with Zustand version) ===
+// === Types ===
 
 export interface OutlineItem {
   id: string
   parentId: string | null
-  sortOrder: number
+  sortKey: string
   text: string
   collapsed: boolean
   done: boolean
@@ -20,16 +21,12 @@ export interface VisibleItem {
   hasChildren: boolean
 }
 
-// === Sample Data ===
-
-import { sampleItems } from '../data/sample-items'
-
-// === Helpers ===
+// === Model helpers (pure functions) ===
 
 function getSiblings(items: OutlineItem[], parentId: string | null): OutlineItem[] {
   return items
-    .filter((item) => item.parentId === parentId)
-    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .filter((i) => i.parentId === parentId)
+    .sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0))
 }
 
 function getDescendantIds(items: OutlineItem[], rootId: string): string[] {
@@ -46,13 +43,14 @@ function getDescendantIds(items: OutlineItem[], rootId: string): string[] {
   return ids
 }
 
-function renumberSiblings(items: OutlineItem[], parentId: string | null) {
-  const siblings = getSiblings(items, parentId)
-  for (const item of items) {
-    if (item.parentId !== parentId) continue
-    const index = siblings.findIndex((s) => s.id === item.id)
-    if (index !== -1) item.sortOrder = index
+function getAncestorIds(items: OutlineItem[], itemId: string): Set<string> {
+  const ancestors = new Set<string>()
+  let current = items.find((i) => i.id === itemId)
+  while (current?.parentId) {
+    ancestors.add(current.parentId)
+    current = items.find((i) => i.id === current!.parentId)
   }
+  return ancestors
 }
 
 function buildVisibleItems(items: OutlineItem[]): VisibleItem[] {
@@ -64,7 +62,7 @@ function buildVisibleItems(items: OutlineItem[]): VisibleItem[] {
   }
 
   for (const siblings of childrenMap.values()) {
-    siblings.sort((a, b) => a.sortOrder - b.sortOrder)
+    siblings.sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0))
   }
 
   const result: VisibleItem[] = []
@@ -87,16 +85,6 @@ function buildVisibleItems(items: OutlineItem[]): VisibleItem[] {
 
   walk(null, 0)
   return result
-}
-
-function getAncestorIds(items: OutlineItem[], itemId: string): Set<string> {
-  const ancestors = new Set<string>()
-  let current = items.find((i) => i.id === itemId)
-  while (current?.parentId) {
-    ancestors.add(current.parentId)
-    current = items.find((i) => i.id === current!.parentId)
-  }
-  return ancestors
 }
 
 function buildFilteredVisibleItems(items: OutlineItem[], query: string): VisibleItem[] {
@@ -125,7 +113,7 @@ function buildFilteredVisibleItems(items: OutlineItem[], query: string): Visible
   }
 
   for (const siblings of childrenMap.values()) {
-    siblings.sort((a, b) => a.sortOrder - b.sortOrder)
+    siblings.sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0))
   }
 
   const result: VisibleItem[] = []
@@ -143,9 +131,52 @@ function buildFilteredVisibleItems(items: OutlineItem[], query: string): Visible
   return result
 }
 
+function sortKeyBetween(before: string | null, after: string | null): string {
+  return generateKeyBetween(before, after)
+}
+
+function sortKeyAfterLast(siblings: OutlineItem[]): string {
+  const last = siblings.length > 0 ? siblings[siblings.length - 1].sortKey : null
+  return generateKeyBetween(last, null)
+}
+
+// === Sample data ===
+
+const sampleItems: OutlineItem[] = [
+  { id: '1', parentId: null, sortKey: 'a0', text: '## Authentication & User Management', collapsed: false, done: false, tags: [{ label: '!1', type: 'priority' }, { label: 'in progress', type: 'progress' }] },
+  { id: '2', parentId: null, sortKey: 'a1', text: '## Core Editor Experience', collapsed: false, done: false, tags: [{ label: '!1', type: 'priority' }] },
+  { id: '3', parentId: null, sortKey: 'a2', text: '## Search & Filtering', collapsed: true, done: false },
+  { id: '4', parentId: null, sortKey: 'a3', text: '## Data & Sync', collapsed: false, done: false, tags: [{ label: '!2', type: 'priority' }] },
+  { id: '5', parentId: null, sortKey: 'a4', text: '## Polish & Launch Prep', collapsed: false, done: false },
+  { id: '1-1', parentId: '1', sortKey: 'a0', text: 'OAuth2 integration with Google & GitHub', collapsed: false, done: true },
+  { id: '1-2', parentId: '1', sortKey: 'a1', text: 'Session management and token refresh', collapsed: false, done: true },
+  { id: '1-3', parentId: '1', sortKey: 'a2', text: '**Role-based access control**', collapsed: false, done: false, tags: [{ label: 'backend', type: 'label' }] },
+  { id: '1-4', parentId: '1', sortKey: 'a3', text: 'Password reset flow', collapsed: false, done: false, note: 'blocked on email service' },
+  { id: '1-3-1', parentId: '1-3', sortKey: 'a0', text: 'Define permission matrix for admin, editor, viewer', collapsed: false, done: false },
+  { id: '1-3-2', parentId: '1-3', sortKey: 'a1', text: 'Middleware guards for API routes', collapsed: false, done: false },
+  { id: '1-3-3', parentId: '1-3', sortKey: 'a2', text: 'UI permission checks in components', collapsed: false, done: false },
+  { id: '2-1', parentId: '2', sortKey: 'a0', text: '**Keyboard navigation system**', collapsed: false, done: false, tags: [{ label: 'in progress', type: 'progress' }] },
+  { id: '2-2', parentId: '2', sortKey: 'a1', text: 'Inline editing with markdown support', collapsed: false, done: false },
+  { id: '2-3', parentId: '2', sortKey: 'a2', text: 'Drag-and-drop reordering', collapsed: false, done: false, tags: [{ label: 'Mar 20', type: 'due' }] },
+  { id: '2-4', parentId: '2', sortKey: 'a3', text: 'Multi-select with Shift+Click', collapsed: false, done: false },
+  { id: '2-1-1', parentId: '2-1', sortKey: 'a0', text: 'J/K movement between siblings', collapsed: false, done: true },
+  { id: '2-1-2', parentId: '2-1', sortKey: 'a1', text: 'Tab/Shift+Tab for indent/outdent', collapsed: false, done: false },
+  { id: '2-1-3', parentId: '2-1', sortKey: 'a2', text: 'Ctrl+Up/Down to move items', collapsed: false, done: false },
+  { id: '3-1', parentId: '3', sortKey: 'a0', text: 'Full-text search across all lists', collapsed: false, done: false },
+  { id: '3-2', parentId: '3', sortKey: 'a1', text: 'Tag-based filtering', collapsed: false, done: false },
+  { id: '3-3', parentId: '3', sortKey: 'a2', text: 'Saved search queries', collapsed: false, done: false },
+  { id: '4-1', parentId: '4', sortKey: 'a0', text: 'Real-time collaboration via WebSocket', collapsed: false, done: false, tags: [{ label: 'Apr 1', type: 'due' }] },
+  { id: '4-2', parentId: '4', sortKey: 'a1', text: 'Offline mode with service worker', collapsed: false, done: false },
+  { id: '4-3', parentId: '4', sortKey: 'a2', text: 'Import from Checkvist, WorkFlowy, OPML', collapsed: false, done: true },
+  { id: '4-4', parentId: '4', sortKey: 'a3', text: 'Export to Markdown, JSON, OPML', collapsed: false, done: true },
+  { id: '5-1', parentId: '5', sortKey: 'a0', text: 'Onboarding tutorial overlay', collapsed: false, done: false },
+  { id: '5-2', parentId: '5', sortKey: 'a1', text: 'Keyboard shortcut cheat sheet modal', collapsed: false, done: true },
+  { id: '5-3', parentId: '5', sortKey: 'a2', text: 'Performance audit \u2014 target <100ms interactions', collapsed: false, done: false, tags: [{ label: 'perf', type: 'label' }] },
+]
+
 // === LocalStorage ===
 
-const STORAGE_KEY = 'vistanest-items'
+const STORAGE_KEY = 'vistanest-items-mobx'
 
 function loadItems(): OutlineItem[] {
   try {
@@ -157,54 +188,40 @@ function loadItems(): OutlineItem[] {
       }
     }
   } catch {
-    // Fall through to sample data
+    // Fall through
   }
   return sampleItems
 }
 
-// === Store ===
+// === Undo ===
 
 const MAX_UNDO = 50
-
-// Undo history lives outside the store — not reactive, not persisted
 const undoStack: OutlineItem[][] = []
 
-class OutlineStore {
-  items: OutlineItem[] = loadItems()
-  focusedId: string | null = '1-3'
-  editingId: string | null = null
-  filterQuery = ''
-  commandPaletteOpen = false
+// === Store ===
 
-  constructor() {
-    makeAutoObservable(this)
-
-    // Auto-persist items on change
-    reaction(
-      () => JSON.stringify(this.items),
-      (json) => localStorage.setItem(STORAGE_KEY, json),
-    )
-  }
-
-  // === Computed ===
+export const outlineStore = makeAutoObservable({
+  items: loadItems() as OutlineItem[],
+  focusedId: '1-3' as string | null,
+  editingId: null as string | null,
+  filterQuery: '',
+  commandPaletteOpen: false,
 
   get visibleItems(): VisibleItem[] {
     if (this.filterQuery.trim()) {
       return buildFilteredVisibleItems(this.items, this.filterQuery.trim())
     }
     return buildVisibleItems(this.items)
-  }
+  },
 
   get completedCount(): number {
     return this.items.filter((i) => i.done).length
-  }
+  },
 
-  // === Undo ===
-
-  private pushUndo() {
+  pushUndo() {
     undoStack.push(toJS(this.items))
     if (undoStack.length > MAX_UNDO) undoStack.shift()
-  }
+  },
 
   undo() {
     const prev = undoStack.pop()
@@ -212,50 +229,44 @@ class OutlineStore {
       this.items = prev
       this.editingId = null
     }
-  }
-
-  // === Actions ===
+  },
 
   toggleCollapse(id: string) {
     const item = this.items.find((i) => i.id === id)
     if (item) item.collapsed = !item.collapsed
-  }
+  },
 
   toggleDone(id: string) {
     this.pushUndo()
     const item = this.items.find((i) => i.id === id)
     if (item) item.done = !item.done
-  }
+  },
 
   moveFocus(direction: 'up' | 'down') {
     const visible = this.visibleItems
     const idx = visible.findIndex((v) => v.item.id === this.focusedId)
     let next: number
 
-    if (idx === -1) {
-      next = 0
-    } else if (direction === 'down') {
-      next = Math.min(idx + 1, visible.length - 1)
-    } else {
-      next = Math.max(idx - 1, 0)
-    }
+    if (idx === -1) next = 0
+    else if (direction === 'down') next = Math.min(idx + 1, visible.length - 1)
+    else next = Math.max(idx - 1, 0)
 
     const nextItem = visible[next]
     if (nextItem) this.focusedId = nextItem.item.id
-  }
+  },
 
-  setFocused(id: string) { this.focusedId = id }
-  startEditing(id: string) { this.editingId = id; this.focusedId = id }
-  stopEditing() { this.editingId = null }
-  setFilterQuery(query: string) { this.filterQuery = query }
-  setCommandPaletteOpen(open: boolean) { this.commandPaletteOpen = open }
+  setFocused(id: string) { this.focusedId = id },
+  startEditing(id: string) { this.editingId = id; this.focusedId = id },
+  stopEditing() { this.editingId = null },
+  setFilterQuery(query: string) { this.filterQuery = query },
+  setCommandPaletteOpen(open: boolean) { this.commandPaletteOpen = open },
 
   updateItemText(id: string, text: string) {
     this.pushUndo()
     const item = this.items.find((i) => i.id === id)
     if (item) item.text = text
     this.editingId = null
-  }
+  },
 
   createSibling(afterId: string) {
     const current = this.items.find((i) => i.id === afterId)
@@ -265,27 +276,21 @@ class OutlineStore {
 
     const siblings = getSiblings(this.items, current.parentId)
     const idx = siblings.findIndex((s) => s.id === afterId)
-    const newSortOrder = idx + 1
-
-    // Bump siblings after insertion point
-    for (const item of this.items) {
-      if (item.parentId === current.parentId && item.sortOrder >= newSortOrder) {
-        item.sortOrder++
-      }
-    }
+    const after = siblings[idx]?.sortKey ?? null
+    const before = siblings[idx + 1]?.sortKey ?? null
 
     const newId = crypto.randomUUID()
     this.items.push({
       id: newId,
       parentId: current.parentId,
-      sortOrder: newSortOrder,
+      sortKey: sortKeyBetween(after, before),
       text: '',
       collapsed: false,
       done: false,
     })
     this.focusedId = newId
     this.editingId = newId
-  }
+  },
 
   createChild(parentId: string) {
     const parent = this.items.find((i) => i.id === parentId)
@@ -300,14 +305,14 @@ class OutlineStore {
     this.items.push({
       id: newId,
       parentId,
-      sortOrder: children.length,
+      sortKey: sortKeyAfterLast(children),
       text: '',
       collapsed: false,
       done: false,
     })
     this.focusedId = newId
     this.editingId = newId
-  }
+  },
 
   deleteItem(id: string) {
     const current = this.items.find((i) => i.id === id)
@@ -315,17 +320,14 @@ class OutlineStore {
 
     this.pushUndo()
 
-    // Find next focus target
     const visible = this.visibleItems
     const visIdx = visible.findIndex((v) => v.item.id === id)
     const prev = visIdx > 0 ? visible[visIdx - 1] : visible[visIdx + 1]
     this.focusedId = prev ? prev.item.id : null
 
-    // Remove item and descendants
     const idsToDelete = new Set([id, ...getDescendantIds(this.items, id)])
     this.items = this.items.filter((i) => !idsToDelete.has(i.id))
-    renumberSiblings(this.items, current.parentId)
-  }
+  },
 
   indentItem(id: string) {
     const current = this.items.find((i) => i.id === id)
@@ -341,10 +343,9 @@ class OutlineStore {
     const newParentChildren = getSiblings(this.items, newParent.id)
 
     current.parentId = newParent.id
-    current.sortOrder = newParentChildren.length
-    renumberSiblings(this.items, current.parentId)
+    current.sortKey = sortKeyAfterLast(newParentChildren)
     newParent.collapsed = false
-  }
+  },
 
   outdentItem(id: string) {
     const current = this.items.find((i) => i.id === id)
@@ -358,20 +359,12 @@ class OutlineStore {
     const grandparentId = parent.parentId
     const parentSiblings = getSiblings(this.items, grandparentId)
     const parentIdx = parentSiblings.findIndex((s) => s.id === parent.id)
-    const newSortOrder = parentIdx + 1
+    const afterParent = parentSiblings[parentIdx]?.sortKey ?? null
+    const beforeNext = parentSiblings[parentIdx + 1]?.sortKey ?? null
 
-    // Bump siblings after parent
-    for (const item of this.items) {
-      if (item.parentId === grandparentId && item.sortOrder >= newSortOrder) {
-        item.sortOrder++
-      }
-    }
-
-    const oldParentId = current.parentId
     current.parentId = grandparentId
-    current.sortOrder = newSortOrder
-    renumberSiblings(this.items, oldParentId)
-  }
+    current.sortKey = sortKeyBetween(afterParent, beforeNext)
+  },
 
   moveItem(id: string, direction: 'up' | 'down') {
     const current = this.items.find((i) => i.id === id)
@@ -385,12 +378,17 @@ class OutlineStore {
 
     this.pushUndo()
 
+    // Swap sortKeys
     const swapIdx = direction === 'up' ? idx - 1 : idx + 1
     const swapItem = siblings[swapIdx]
-    const tempSort = current.sortOrder
-    current.sortOrder = swapItem.sortOrder
-    swapItem.sortOrder = tempSort
-  }
-}
+    const tempKey = current.sortKey
+    current.sortKey = swapItem.sortKey
+    swapItem.sortKey = tempKey
+  },
+})
 
-export const outlineStore = new OutlineStore()
+// Auto-persist items on change
+reaction(
+  () => JSON.stringify(outlineStore.items),
+  (json) => localStorage.setItem(STORAGE_KEY, json),
+)

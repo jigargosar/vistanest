@@ -64,7 +64,7 @@ const phosphor: ThemeDef = {
 
 export const themes: ThemeDef[] = [midnight, charcoal, slate, paper, phosphor]
 
-// === Store ===
+// === Apply to DOM ===
 
 function applyTheme(theme: ThemeDef) {
   const root = document.documentElement
@@ -73,13 +73,12 @@ function applyTheme(theme: ThemeDef) {
   }
 }
 
-class ThemeStore {
-  currentTheme = 'midnight'
+// === Store ===
 
-  constructor() {
-    makeAutoObservable(this)
-    applyTheme(midnight)
-  }
+applyTheme(midnight)
+
+export const themeStore = makeAutoObservable({
+  currentTheme: 'midnight',
 
   setTheme(name: string) {
     const theme = themes.find((t) => t.name === name)
@@ -87,7 +86,5 @@ class ThemeStore {
       applyTheme(theme)
       this.currentTheme = name
     }
-  }
-}
-
-export const themeStore = new ThemeStore()
+  },
+})
