@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@react-hooks-library/core':
+        specifier: 0.6.2
+        version: 0.6.2(react@19.2.4)
       fractional-indexing:
         specifier: 3.2.0
         version: 3.2.0
@@ -91,6 +94,14 @@ packages:
 
   '@oxc-project/types@0.115.0':
     resolution: {integrity: sha512-4n91DKnebUS4yjUHl2g3/b2T+IUdCfmoZGhmwsovZCDaJSs+QkVAM+0AqqTxHSsHfeiMuueT75cZaZcT/m0pSw==}
+
+  '@react-hooks-library/core@0.6.2':
+    resolution: {integrity: sha512-Ca6ccj9mfUiQ0hbDJV0hzUaweZU7D0E5Xwtp3ba5oT6/yWj1tzoPe0y3AwGQyUSUKA5G6OADylU2fwEqZwrpNA==}
+    peerDependencies:
+      react: '>=16.9.0'
+
+  '@react-hooks-library/shared@0.6.2':
+    resolution: {integrity: sha512-tasvVgcoRhnHYZSVfQjDK7VDviVrO9BqqS/yEvjJ4/QRTVFQTNmt5Jfj3ym0Uju2B63Dc9892DuLhb9V9oysWA==}
 
   '@rolldown/binding-android-arm64@1.0.0-rc.9':
     resolution: {integrity: sha512-lcJL0bN5hpgJfSIz/8PIf02irmyL43P+j1pTCfbD1DbLkmGRuFIA4DD3B3ZOvGqG0XiVvRznbKtN0COQVaKUTg==}
@@ -676,6 +687,13 @@ snapshots:
   '@oxc-project/runtime@0.115.0': {}
 
   '@oxc-project/types@0.115.0': {}
+
+  '@react-hooks-library/core@0.6.2(react@19.2.4)':
+    dependencies:
+      '@react-hooks-library/shared': 0.6.2
+      react: 19.2.4
+
+  '@react-hooks-library/shared@0.6.2': {}
 
   '@rolldown/binding-android-arm64@1.0.0-rc.9':
     optional: true
