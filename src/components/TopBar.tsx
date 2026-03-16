@@ -1,26 +1,24 @@
-import { useRef, useEffect, useCallback } from 'react'
+import { useRef, useState, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
+import { useEventListener } from '@react-hooks-library/core'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { outlineStore } from '../store-mobx/outline-store'
 
 export const TopBar = observer(function TopBar() {
   const filterQuery = outlineStore.filterQuery
   const searchRef = useRef<HTMLInputElement>(null)
+  const [searchFocused, setSearchFocused] = useState(false)
 
-  useEffect(() => {
-    function handleSlash(e: KeyboardEvent) {
-      if (
-        e.key === '/' &&
-        document.activeElement?.tagName !== 'INPUT' &&
-        document.activeElement?.tagName !== 'TEXTAREA'
-      ) {
-        e.preventDefault()
-        searchRef.current?.focus()
-      }
+  useEventListener('keydown', (e) => {
+    if (
+      e.key === '/' &&
+      document.activeElement?.tagName !== 'INPUT' &&
+      document.activeElement?.tagName !== 'TEXTAREA'
+    ) {
+      e.preventDefault()
+      searchRef.current?.focus()
     }
-    window.addEventListener('keydown', handleSlash)
-    return () => window.removeEventListener('keydown', handleSlash)
-  }, [])
+  })
 
   const handleSearchKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -33,7 +31,7 @@ export const TopBar = observer(function TopBar() {
     [],
   )
 
-  const isFocused = filterQuery.length > 0 || document.activeElement === searchRef.current
+  const isFocused = searchFocused || filterQuery.length > 0
 
   return (
     <header
@@ -73,6 +71,8 @@ export const TopBar = observer(function TopBar() {
           placeholder="Search items..."
           value={filterQuery}
           onChange={(e) => outlineStore.setFilterQuery(e.target.value)}
+          onFocus={() => setSearchFocused(true)}
+          onBlur={() => setSearchFocused(false)}
           onKeyDown={handleSearchKeyDown}
           className="w-full h-8 rounded-md pl-8 pr-10 text-[13px] outline-none"
           style={{

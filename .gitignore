@@ -24,3 +24,7 @@ dist
 elm-stuff
 docs/reference/zustand-repo/
 docs/reference/checkvist/
+
+# Playwright
+test-results/
+playwright-report/

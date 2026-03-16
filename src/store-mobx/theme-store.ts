@@ -8,21 +8,27 @@ export interface ThemeColors {
   '--bg-raised': string
   '--bg-hover': string
   '--bg-focus': string
+
   '--border-subtle': string
   '--border-dim': string
+
   '--text-primary': string
   '--text-secondary': string
   '--text-tertiary': string
   '--text-ghost': string
+
   '--accent': string
   '--accent-dim': string
   '--accent-glow': string
   '--accent-border': string
+
   '--done-text': string
   '--done-line': string
+
   '--kbd-bg': string
   '--kbd-border': string
   '--kbd-text': string
+
   '--red-soft': string
   '--green-soft': string
   '--yellow-soft': string
