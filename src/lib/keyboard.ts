@@ -1,87 +1,99 @@
 import { outlineStore } from '../store-mobx/outline-store'
 
-export function handleGlobalShortcuts(e: KeyboardEvent): boolean {
-  // Ctrl+Z — undo (not in inputs)
-  if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
-    const target = e.target as HTMLElement
-    if (target.tagName !== 'INPUT' && target.tagName !== 'TEXTAREA') {
-      e.preventDefault()
-      outlineStore.undo()
-      return true
-    }
-  }
+const DOUBLE_TAP_MS = 400
 
-  // Ctrl+K — toggle command palette
-  if (e.key === 'k' && (e.ctrlKey || e.metaKey)) {
-    e.preventDefault()
-    outlineStore.setCommandPaletteOpen(!outlineStore.commandPaletteOpen)
+let lastEPress = 0
+
+function isInputFocused(e: KeyboardEvent): boolean {
+  const tag = (e.target as HTMLElement).tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA'
+}
+
+function handleDoubleTap(): boolean {
+  const now = Date.now()
+  if (now - lastEPress < DOUBLE_TAP_MS) {
+    lastEPress = 0
     return true
   }
-
+  lastEPress = now
   return false
 }
 
-export function handleOutlineKeys(e: KeyboardEvent, lastEPressRef: React.MutableRefObject<number>): void {
-  const target = e.target as HTMLElement
-  if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
-  if (outlineStore.editingId) return
+export function createKeyHandler(): (e: KeyboardEvent) => void {
+  return (e: KeyboardEvent) => {
+    if (isInputFocused(e)) return
+    if (outlineStore.editingId) return
 
-  const id = outlineStore.focusedId
+    const id = outlineStore.focusedId
 
-  switch (e.key) {
-    case 'j':
-    case 'ArrowDown':
-      e.preventDefault()
-      if (e.altKey && id) outlineStore.moveItem(id, 'down')
-      else outlineStore.moveFocus('down')
-      break
-    case 'k':
-    case 'ArrowUp':
-      e.preventDefault()
-      if (e.altKey && id) outlineStore.moveItem(id, 'up')
-      else outlineStore.moveFocus('up')
-      break
-    case ' ':
-      e.preventDefault()
-      if (id) outlineStore.toggleCollapse(id)
-      break
-    case 'Enter':
-      e.preventDefault()
-      if (id) {
+    switch (e.key) {
+      case 'z':
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey) {
+          e.preventDefault()
+          outlineStore.undo()
+        }
+        break
+      case 'k':
+        if (e.ctrlKey || e.metaKey) {
+          e.preventDefault()
+          outlineStore.setCommandPaletteOpen(!outlineStore.commandPaletteOpen)
+        } else {
+          e.preventDefault()
+          if (e.altKey && id) outlineStore.moveItem(id, 'up')
+          else outlineStore.moveFocus('up')
+        }
+        break
+      case 'j':
+      case 'ArrowDown':
+        e.preventDefault()
+        if (e.altKey && id) outlineStore.moveItem(id, 'down')
+        else outlineStore.moveFocus('down')
+        break
+      case 'ArrowUp':
+        e.preventDefault()
+        if (e.altKey && id) outlineStore.moveItem(id, 'up')
+        else outlineStore.moveFocus('up')
+        break
+      case ' ':
+        if (!id) return
+        e.preventDefault()
+        outlineStore.toggleCollapse(id)
+        break
+      case 'Enter':
+        if (!id) return
+        e.preventDefault()
         if (e.shiftKey) outlineStore.createChild(id)
         else outlineStore.createSibling(id)
-      }
-      break
-    case 'F2':
-      e.preventDefault()
-      if (id) outlineStore.startEditing(id)
-      break
-    case 'e': {
-      const now = Date.now()
-      if (now - lastEPressRef.current < 400) {
+        break
+      case 'F2':
+        if (!id) return
         e.preventDefault()
-        lastEPressRef.current = 0
-        if (id) outlineStore.startEditing(id)
-      } else {
-        lastEPressRef.current = now
-      }
-      break
-    }
-    case 'Delete':
-    case 'Backspace':
-      e.preventDefault()
-      if (id) outlineStore.deleteItem(id)
-      break
-    case 'Tab':
-      e.preventDefault()
-      if (id) {
+        outlineStore.startEditing(id)
+        break
+      case 'e':
+        if (!id) return
+        if (handleDoubleTap()) {
+          e.preventDefault()
+          outlineStore.startEditing(id)
+        }
+        break
+      case 'Delete':
+      case 'Backspace':
+        if (!id) return
+        e.preventDefault()
+        outlineStore.deleteItem(id)
+        break
+      case 'Tab':
+        if (!id) return
+        e.preventDefault()
         if (e.shiftKey) outlineStore.outdentItem(id)
         else outlineStore.indentItem(id)
-      }
-      break
-    case 'x':
-      e.preventDefault()
-      if (id) outlineStore.toggleDone(id)
-      break
+        break
+      case 'x':
+        if (!id) return
+        e.preventDefault()
+        outlineStore.toggleDone(id)
+        break
+    }
   }
 }
