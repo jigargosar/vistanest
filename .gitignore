@@ -22,3 +22,5 @@ dist
 
 # Elm
 elm-stuff
+docs/reference/zustand-repo/
+docs/reference/checkvist/
