@@ -1,10 +1,10 @@
 import { useRef, useEffect, useCallback } from 'react'
+import { observer } from 'mobx-react-lite'
 import { ThemeSwitcher } from './ThemeSwitcher'
-import { useOutlineStore } from '../store/outline-store'
+import { outlineStore } from '../store-mobx/outline-store'
 
-export function TopBar() {
-  const filterQuery = useOutlineStore((s) => s.filterQuery)
-  const setFilterQuery = useOutlineStore((s) => s.setFilterQuery)
+export const TopBar = observer(function TopBar() {
+  const filterQuery = outlineStore.filterQuery
   const searchRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -26,11 +26,11 @@ export function TopBar() {
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Escape') {
         e.preventDefault()
-        setFilterQuery('')
+        outlineStore.setFilterQuery('')
         searchRef.current?.blur()
       }
     },
-    [setFilterQuery],
+    [],
   )
 
   const isFocused = filterQuery.length > 0 || document.activeElement === searchRef.current
@@ -72,7 +72,7 @@ export function TopBar() {
           type="text"
           placeholder="Search items..."
           value={filterQuery}
-          onChange={(e) => setFilterQuery(e.target.value)}
+          onChange={(e) => outlineStore.setFilterQuery(e.target.value)}
           onKeyDown={handleSearchKeyDown}
           className="w-full h-8 rounded-md pl-8 pr-10 text-[13px] outline-none"
           style={{
@@ -93,7 +93,7 @@ export function TopBar() {
       </div>
     </header>
   )
-}
+})
 
 function SearchIcon({ className }: { className?: string }) {
   return (

@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
-import { useThemeStore, themes } from '../store/theme-store'
+import { observer } from 'mobx-react-lite'
+import { themeStore, themes } from '../store-mobx/theme-store'
 
-export function ThemeSwitcher() {
+export const ThemeSwitcher = observer(function ThemeSwitcher() {
   const [open, setOpen] = useState(false)
-  const currentTheme = useThemeStore((s) => s.currentTheme)
-  const setTheme = useThemeStore((s) => s.setTheme)
+  const currentTheme = themeStore.currentTheme
   const panelRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
@@ -78,7 +78,7 @@ export function ThemeSwitcher() {
             <button
               key={theme.name}
               onClick={() => {
-                setTheme(theme.name)
+                themeStore.setTheme(theme.name)
                 setOpen(false)
               }}
               className={`theme-option w-full flex items-center gap-3 px-3 py-2 border-none cursor-pointer transition-colors text-left ${currentTheme === theme.name ? 'is-active' : ''}`}
@@ -107,4 +107,4 @@ export function ThemeSwitcher() {
       )}
     </div>
   )
-}
+})

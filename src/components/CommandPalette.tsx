@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
-import { useOutlineStore } from '../store/outline-store'
-import { useThemeStore, themes } from '../store/theme-store'
+import { observer } from 'mobx-react-lite'
+import { outlineStore } from '../store-mobx/outline-store'
+import { themeStore, themes } from '../store-mobx/theme-store'
 
 interface Command {
   id: string
@@ -9,27 +10,25 @@ interface Command {
   action: () => void
 }
 
-export function CommandPalette() {
-  const isOpen = useOutlineStore((s) => s.commandPaletteOpen)
-  const focusedId = useOutlineStore((s) => s.focusedId)
+export const CommandPalette = observer(function CommandPalette() {
+  const isOpen = outlineStore.commandPaletteOpen
+  const focusedId = outlineStore.focusedId
 
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const commands = useMemo((): Command[] => {
-    const store = useOutlineStore.getState()
-    const themeStore = useThemeStore.getState()
     const id = focusedId
 
     const list: Command[] = [
-      { id: 'new-item', label: 'New Item', shortcut: 'Enter', action: () => { if (id) store.createSibling(id) } },
-      { id: 'edit', label: 'Edit Item', shortcut: 'ee', action: () => { if (id) store.startEditing(id) } },
-      { id: 'delete', label: 'Delete Item', shortcut: 'Del', action: () => { if (id) store.deleteItem(id) } },
-      { id: 'indent', label: 'Indent', shortcut: 'Tab', action: () => { if (id) store.indentItem(id) } },
-      { id: 'outdent', label: 'Outdent', shortcut: 'Shift+Tab', action: () => { if (id) store.outdentItem(id) } },
-      { id: 'toggle-done', label: 'Toggle Done', shortcut: 'x', action: () => { if (id) store.toggleDone(id) } },
-      { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', action: () => store.undo() },
+      { id: 'new-item', label: 'New Item', shortcut: 'Enter', action: () => { if (id) outlineStore.createSibling(id) } },
+      { id: 'edit', label: 'Edit Item', shortcut: 'ee', action: () => { if (id) outlineStore.startEditing(id) } },
+      { id: 'delete', label: 'Delete Item', shortcut: 'Del', action: () => { if (id) outlineStore.deleteItem(id) } },
+      { id: 'indent', label: 'Indent', shortcut: 'Tab', action: () => { if (id) outlineStore.indentItem(id) } },
+      { id: 'outdent', label: 'Outdent', shortcut: 'Shift+Tab', action: () => { if (id) outlineStore.outdentItem(id) } },
+      { id: 'toggle-done', label: 'Toggle Done', shortcut: 'x', action: () => { if (id) outlineStore.toggleDone(id) } },
+      { id: 'undo', label: 'Undo', shortcut: 'Ctrl+Z', action: () => outlineStore.undo() },
     ]
 
     for (const theme of themes) {
@@ -64,7 +63,7 @@ export function CommandPalette() {
   }, [filteredCommands.length, selectedIndex])
 
   const close = useCallback(() => {
-    useOutlineStore.getState().setCommandPaletteOpen(false)
+    outlineStore.setCommandPaletteOpen(false)
   }, [])
 
   const executeCommand = useCallback(
@@ -169,7 +168,7 @@ export function CommandPalette() {
       </div>
     </div>
   )
-}
+})
 
 function SearchIcon() {
   return (

@@ -1,6 +1,7 @@
-import { memo, useCallback, useEffect, useRef, useState, useMemo } from 'react'
-import type { VisibleItem } from '../store/outline-store'
-import { useOutlineStore } from '../store/outline-store'
+import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { observer } from 'mobx-react-lite'
+import type { VisibleItem } from '../store-mobx/outline-store'
+import { outlineStore } from '../store-mobx/outline-store'
 
 interface OutlineItemProps {
   visibleItem: VisibleItem
@@ -64,17 +65,12 @@ function inlineMarkdown(text: string): React.ReactNode {
   return parts.length === 1 ? parts[0] : <>{parts}</>
 }
 
-export const OutlineItem = memo(function OutlineItem({
+export const OutlineItem = observer(function OutlineItem({
   visibleItem,
   isFocused,
   isEditing,
 }: OutlineItemProps) {
   const { item, depth, childCount, hasChildren } = visibleItem
-  const toggleCollapse = useOutlineStore((s) => s.toggleCollapse)
-  const setFocused = useOutlineStore((s) => s.setFocused)
-  const startEditing = useOutlineStore((s) => s.startEditing)
-  const stopEditing = useOutlineStore((s) => s.stopEditing)
-  const updateItemText = useOutlineStore((s) => s.updateItemText)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const [editText, setEditText] = useState(item.text)
@@ -93,36 +89,36 @@ export const OutlineItem = memo(function OutlineItem({
   const handleToggle = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      toggleCollapse(item.id)
+      outlineStore.toggleCollapse(item.id)
     },
-    [toggleCollapse, item.id],
+    [item.id],
   )
 
   const handleRowClick = useCallback(() => {
-    setFocused(item.id)
-  }, [setFocused, item.id])
+    outlineStore.setFocused(item.id)
+  }, [item.id])
 
   const handleDoubleClick = useCallback(() => {
-    startEditing(item.id)
-  }, [startEditing, item.id])
+    outlineStore.startEditing(item.id)
+  }, [item.id])
 
 
   const handleEditKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
         e.preventDefault()
-        updateItemText(item.id, editText)
+        outlineStore.updateItemText(item.id, editText)
       } else if (e.key === 'Escape') {
         e.preventDefault()
-        stopEditing()
+        outlineStore.stopEditing()
       }
     },
-    [item.id, editText, updateItemText, stopEditing],
+    [item.id, editText],
   )
 
   const handleEditBlur = useCallback(() => {
-    updateItemText(item.id, editText)
-  }, [item.id, editText, updateItemText])
+    outlineStore.updateItemText(item.id, editText)
+  }, [item.id, editText])
 
   const rendered = useMemo(() => renderMarkdown(item.text), [item.text])
 

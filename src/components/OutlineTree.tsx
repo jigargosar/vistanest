@@ -1,20 +1,14 @@
 import type { ReactNode } from 'react'
-import { useMemo } from 'react'
-import { useOutlineStore, selectVisibleItems } from '../store/outline-store'
+import { observer } from 'mobx-react-lite'
+import { outlineStore } from '../store-mobx/outline-store'
 import { OutlineItem } from './OutlineItem'
 
-export function OutlineTree() {
-  const items = useOutlineStore((s) => s.items)
-  const focusedId = useOutlineStore((s) => s.focusedId)
-  const editingId = useOutlineStore((s) => s.editingId)
-  const filterQuery = useOutlineStore((s) => s.filterQuery)
-  const visibleItems = useMemo(
-    () => selectVisibleItems({ items }, filterQuery),
-    [items, filterQuery],
-  )
-
-  const totalItems = items.length
-  const completedItems = items.filter((i) => i.done).length
+export const OutlineTree = observer(function OutlineTree() {
+  const visibleItems = outlineStore.visibleItems
+  const focusedId = outlineStore.focusedId
+  const editingId = outlineStore.editingId
+  const totalItems = outlineStore.items.length
+  const completedItems = outlineStore.completedCount
 
   return (
     <main
@@ -77,7 +71,7 @@ export function OutlineTree() {
       </div>
     </main>
   )
-}
+})
 
 function TitleAction({ title, children }: { title: string; children: ReactNode }) {
   return (
