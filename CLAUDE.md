@@ -66,7 +66,7 @@ Item text supports `## headings`, `**bold**`, `*italic*`, `` `code` ``. Parsed a
 
 1. No CSS transitions on interactive elements — snappy keyboard response
 2. No hover highlights on outline items
-3. `observer()` wrapper required on every component reading MobX store (after migration)
+3. `observer()` wrapper required on every component — no exceptions
 4. Persistence via `reaction()` in MobX, manual `saveItems()` in Zustand
 5. Undo: in-memory snapshot array, `toJS()` before each mutation
 6. Reference docs: `docs/reference/zustand-docs-summary/` and `docs/reference/legend-state-research/`
