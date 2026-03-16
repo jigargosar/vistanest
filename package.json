@@ -10,7 +10,8 @@
         "typecheck": "tsc --noEmit",
         "typecheck:watch": "tsc --noEmit --watch",
         "test:e2e": "playwright test",
-        "test:e2e:ui": "playwright test --ui"
+        "test:e2e:ui": "playwright test --ui",
+        "test:e2e:update": "playwright test --update-snapshots"
     },
     "devDependencies": {
         "@playwright/test": "1.58.2",
@@ -20,7 +21,6 @@
         "@vitejs/plugin-basic-ssl": "2.2.0",
         "@vitejs/plugin-react": "6.0.1",
         "prettier": "3.8.1",
-        "puppeteer": "24.39.1",
         "tailwindcss": "4.2.1",
         "typescript": "5.9.3",
         "vite": "8.0.0",
@@ -32,7 +32,6 @@
         "mobx": "6.15.0",
         "mobx-react-lite": "4.1.1",
         "react": "19.2.4",
-        "react-dom": "19.2.4",
-        "zustand": "5.0.11"
+        "react-dom": "19.2.4"
     }
 }
