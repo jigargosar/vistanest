@@ -8,7 +8,7 @@ Checkvist clone with full feature parity — keyboard-first hierarchical outline
 
 # Decision making
 
-Never scope technical decisions to the current MVP state. This project will grow to Checkvist-level complexity (real-time sync, collaboration, offline-first, multiple lists). Evaluate libraries, patterns, and architecture against that full vision.
+You should never scope technical decisions to the current MVP state. This project will grow to Checkvist-level complexity (real-time sync, collaboration, offline-first, multiple lists). You should evaluate libraries, patterns, and architecture against that full vision.
 
 # Project
 
@@ -54,7 +54,7 @@ Flat array of `OutlineItem` with `parentId` + `sortKey`. Tree is computed at ren
 
 ## Shared modules
 
-1. `src/lib/keyboard.ts` — `handleGlobalShortcuts` and `handleOutlineKeys`
+1. `src/lib/keyboard.ts` — `setupKeyboard` with declarative tinykeys bindings
 2. `src/lib/markdown.tsx` — `renderMarkdown` for inline heading/bold/italic/code parsing
 
 ## Theming
@@ -67,9 +67,9 @@ Item text supports `## headings`, `**bold**`, `*italic*`, `` `code` ``. Parsed a
 
 # Key conventions
 
-1. No CSS transitions on interactive elements — snappy keyboard response
-2. No hover highlights on outline items
-3. `observer()` wrapper required on every component — no exceptions
-4. Persistence via `reaction()` in MobX
-5. Undo: in-memory snapshot array, `toJS()` before each mutation
-6. Reference docs: `docs/reference/zustand-docs-summary/` and `docs/reference/legend-state-research/`
+1. You should not add CSS transitions on interactive elements — snappy keyboard response
+2. You should not add hover highlights on outline items
+3. You must wrap every component in `observer()` — no exceptions
+4. You should use `reaction()` for persistence in MobX
+5. You should use in-memory snapshot array with `toJS()` before each mutation for undo
+6. You can find reference docs in `docs/reference/zustand-docs-summary/` and `docs/reference/legend-state-research/`
