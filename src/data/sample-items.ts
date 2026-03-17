@@ -1,4 +1,4 @@
-import type { OutlineItem } from '../store-mobx/outline-store'
+import type { OutlineItem } from '../store-mobx/model'
 
 export const sampleItems: OutlineItem[] = [
   { id: '1', parentId: null, sortKey: 'a0', text: '## Authentication & User Management', collapsed: false, done: false, tags: [{ label: '!1', type: 'priority' }, { label: 'in progress', type: 'progress' }] },

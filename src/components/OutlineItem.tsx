@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
 import { observer } from 'mobx-react-lite'
-import type { VisibleItem } from '../store-mobx/outline-store'
+import type { VisibleItem } from '../store-mobx/model'
 import { outlineStore } from '../store-mobx/outline-store'
 import { renderMarkdown } from '../lib/markdown'
 
