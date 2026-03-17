@@ -1,29 +1,26 @@
-CLAUDE.md
+# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# Goal
-
-Checkvist clone with full feature parity — keyboard-first hierarchical outliner with collaboration, sync, tags, due dates, assignees, and more. See `docs/reference/checkvist/` for saved source and screenshots.
-
-# Decision making
-
-You should never scope technical decisions to the current MVP state. This project will grow to Checkvist-level complexity (real-time sync, collaboration, offline-first, multiple lists). You should evaluate libraries, patterns, and architecture against that full vision.
-
 # Project
 
-VistaNest — a Checkvist-style keyboard-driven hierarchical outliner. Dark-themed, keyboard-first, minimal chrome.
+VistaNest — a Checkvist-style keyboard-driven hierarchical outliner. Dark-themed, keyboard-first, minimal chrome. Long-term goal is full Checkvist feature parity (real-time sync, collaboration, offline-first, multiple lists). See `docs/reference/checkvist/` for saved source and screenshots.
+
+# Decision-making
+
+You should never scope technical decisions to the current MVP state. This project will grow to Checkvist-level complexity. You should evaluate libraries, patterns, and architecture against that full vision.
 
 # Commands
 
 ```
-pnpm dev              # Start Vite dev server (HTTPS, hot reload)
+pnpm dev              # Start Vite dev server (HTTPS via basic-ssl, hot reload)
 pnpm build            # Production build
 pnpm typecheck        # Type check without emit
 pnpm typecheck:watch  # Type check in watch mode
-pnpm test:e2e         # Run Playwright e2e tests (starts its own dev server)
+pnpm test:e2e         # Run Playwright e2e tests (starts its own dev server on port 5188)
 pnpm test:e2e:ui      # Playwright interactive UI
 pnpm test:e2e:update  # Update visual snapshots
+pnpm test:e2e -- --grep "smoke"  # Run a single test by name
 ```
 
 # Stack
@@ -32,9 +29,10 @@ pnpm test:e2e:update  # Update visual snapshots
 2. Vite 8 + Tailwind v4 + pnpm
 3. State: MobX (`src/store-mobx/`) — `makeAutoObservable` on plain objects (not classes)
 4. `fractional-indexing` for item ordering (`sortKey: string`)
-5. `@react-hooks-library/core` for `useEventListener` and other hooks
-6. CSS variables for theming — themes are JS objects that apply to `:root`
-7. Playwright for e2e tests with visual snapshot regression
+5. `@tanstack/hotkeys` for keyboard shortcuts, wrapped by `src/lib/hotkey.ts`
+6. `@react-hooks-library/core` for `useEventListener` (used in TopBar)
+7. CSS variables for theming — themes are JS objects that apply to `:root`
+8. Playwright for e2e tests with visual snapshot regression (HTTPS, chromium-only)
 
 # Architecture
 
@@ -42,20 +40,9 @@ pnpm test:e2e:update  # Update visual snapshots
 
 Flat array of `OutlineItem` with `parentId` + `sortKey`. Tree is computed at render time via depth-first walk. No nested data structure.
 
-## Component structure
+## Keyboard handling
 
-1. `App.tsx` — layout shell, delegates keyboard handling to `src/lib/keyboard.ts`
-2. `OutlineTree.tsx` — list header, renders visible items
-3. `OutlineItem.tsx` — single item row with inline editing
-4. `TopBar.tsx` — logo, breadcrumb, search filter
-5. `BottomBar.tsx` — keyboard shortcut hints
-6. `CommandPalette.tsx` — Ctrl+K command overlay
-7. `ThemeSwitcher.tsx` — theme dropdown
-
-## Shared modules
-
-1. `src/lib/keyboard.ts` — `setupKeyboard` with declarative tinykeys bindings
-2. `src/lib/markdown.tsx` — `renderMarkdown` for inline heading/bold/italic/code parsing
+`src/lib/hotkey.ts` provides `hk()` and `sq()` helpers that wrap `@tanstack/hotkeys`. `src/lib/keyboard.ts` defines all bindings declaratively via `setupKeyboard()`, wired up in App's `useEffect`. All handlers call store actions directly — no intermediate dispatch layer.
 
 ## Theming
 
