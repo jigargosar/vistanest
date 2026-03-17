@@ -1,27 +1,39 @@
-import { tinykeys } from 'tinykeys'
+import { hk, sq, register } from './hotkey'
 import { outlineStore as store } from '../store-mobx/outline-store'
 
 export function setupKeyboard() {
-  return tinykeys(window, {
-    '$mod+z':           () => store.undo(),
-    '$mod+k':           () => store.toggleCommandPalette(),
-    'j':                () => store.moveFocus('down'),
-    'ArrowDown':        () => store.moveFocus('down'),
-    'k':                () => store.moveFocus('up'),
-    'ArrowUp':          () => store.moveFocus('up'),
-    'Alt+j':            () => store.moveItem('down'),
-    'Alt+ArrowDown':    () => store.moveItem('down'),
-    'Alt+k':            () => store.moveItem('up'),
-    'Alt+ArrowUp':      () => store.moveItem('up'),
-    'Space':            () => store.toggleCollapse(),
-    'Enter':            () => store.createSibling(),
-    'Shift+Enter':      () => store.createChild(),
-    'e e':              () => store.startEditing(),
-    'F2':               () => store.startEditing(),
-    'Delete':           () => store.deleteItem(),
-    'Backspace':        () => store.deleteItem(),
-    'Tab':              () => store.indentItem(),
-    'Shift+Tab':        () => store.outdentItem(),
-    'x':                () => store.toggleDone(),
-  }, { timeout: 1000 })
+  return register([
+    hk('Mod+Z',         store.undo),
+    hk('Mod+K',         store.toggleCommandPalette),
+
+    // focusDown
+    hk('J',             store.focusDown),
+    hk('ArrowDown',     store.focusDown),
+
+    // focusUp
+    hk('K',             store.focusUp),
+    hk('ArrowUp',       store.focusUp),
+
+    // moveItemDown
+    hk('Alt+J',         store.moveItemDown),
+    hk('Alt+ArrowDown', store.moveItemDown),
+
+    // moveItemUp
+    hk('Alt+K',         store.moveItemUp),
+    hk('Alt+ArrowUp',   store.moveItemUp),
+
+    hk('Space',         store.toggleCollapse),
+    hk('Enter',         store.createSibling),
+    hk('Shift+Enter',   store.createChild),
+
+    // deleteItem
+    hk('Delete',        store.deleteItem),
+    hk('Backspace',     store.deleteItem),
+
+    hk('Tab',           store.indentItem),
+    hk('Shift+Tab',     store.outdentItem),
+    hk('X',             store.toggleDone),
+
+    sq(['E', 'E'],      store.startEditing),
+  ], { ignoreInputs: true })
 }

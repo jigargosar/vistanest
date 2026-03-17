@@ -246,6 +246,11 @@ export const outlineStore = makeAutoObservable({
     if (item) item.done = !item.done
   },
 
+  focusDown() { this.moveFocus('down') },
+  focusUp() { this.moveFocus('up') },
+  moveItemDown() { this.moveItem('down') },
+  moveItemUp() { this.moveItem('up') },
+
   moveFocus(direction: 'up' | 'down') {
     const visible = this.visibleItems
     const idx = visible.findIndex((v) => v.item.id === this.focusedId)
@@ -407,7 +412,7 @@ export const outlineStore = makeAutoObservable({
     current.sortKey = swapItem.sortKey
     swapItem.sortKey = tempKey
   },
-})
+}, {}, { autoBind: true })
 
 // Auto-persist items on change
 reaction(

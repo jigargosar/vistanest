@@ -27,11 +27,12 @@
     },
     "dependencies": {
         "@react-hooks-library/core": "0.6.2",
+        "@tanstack/hotkeys": "0.4.1",
+        "@tanstack/react-hotkeys": "0.4.1",
         "fractional-indexing": "3.2.0",
         "mobx": "6.15.0",
         "mobx-react-lite": "4.1.1",
         "react": "19.2.4",
-        "react-dom": "19.2.4",
-        "tinykeys": "3.0.0"
+        "react-dom": "19.2.4"
     }
 }
