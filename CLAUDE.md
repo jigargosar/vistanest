@@ -2,13 +2,13 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-# Project
+# Goal
 
-VistaNest — a Checkvist-style keyboard-driven hierarchical outliner. Dark-themed, keyboard-first, minimal chrome. Long-term goal is full Checkvist feature parity (real-time sync, collaboration, offline-first, multiple lists). See `docs/reference/checkvist/` for saved source and screenshots.
+Checkvist clone with full feature parity — keyboard-first hierarchical outliner with collaboration, sync, tags, due dates, assignees, and more. See `docs/reference/checkvist/` for saved source and screenshots.
 
-# Decision-making
+# Decision making
 
-You should never scope technical decisions to the current MVP state. This project will grow to Checkvist-level complexity. You should evaluate libraries, patterns, and architecture against that full vision.
+You should never scope technical decisions to the current MVP state. This project will grow to Checkvist-level complexity (real-time sync, collaboration, offline-first, multiple lists). You should evaluate libraries, patterns, and architecture against that full vision.
 
 # Commands
 
@@ -30,7 +30,7 @@ pnpm test:e2e -- --grep "smoke"  # Run a single test by name
 3. State: MobX (`src/store-mobx/`) — `makeAutoObservable` on plain objects (not classes)
 4. `fractional-indexing` for item ordering (`sortKey: string`)
 5. `@tanstack/hotkeys` for keyboard shortcuts, wrapped by `src/lib/hotkey.ts`
-6. `@react-hooks-library/core` for `useEventListener` (used in TopBar)
+6. `@react-hooks-library/core` for `useEventListener` and other hooks
 7. CSS variables for theming — themes are JS objects that apply to `:root`
 8. Playwright for e2e tests with visual snapshot regression (HTTPS, chromium-only)
 
@@ -39,6 +39,23 @@ pnpm test:e2e -- --grep "smoke"  # Run a single test by name
 ## Data model
 
 Flat array of `OutlineItem` with `parentId` + `sortKey`. Tree is computed at render time via depth-first walk. No nested data structure.
+
+## Stores
+
+Two module-level MobX singletons, both using `makeAutoObservable` with `autoBind`:
+
+1. `outlineStore` — items, focus, editing, filter, command palette state. `visibleItems` is a computed that builds the tree on every access. Persistence via `reaction()` to localStorage. Undo via in-memory snapshot array (`toJS()` before each mutation, max 50).
+2. `themeStore` — current theme name. `setTheme()` applies CSS variables to `:root`.
+
+## Component structure
+
+1. `App.tsx` — layout shell, wires `setupKeyboard()` in `useEffect`
+2. `OutlineTree.tsx` — list header, renders visible items
+3. `OutlineItem.tsx` — single item row with inline editing
+4. `TopBar.tsx` — logo, breadcrumb, search filter
+5. `BottomBar.tsx` — keyboard shortcut hints
+6. `CommandPalette.tsx` — Ctrl+K command overlay
+7. `ThemeSwitcher.tsx` — theme dropdown
 
 ## Keyboard handling
 
