@@ -4,11 +4,43 @@
 
 ---
 
-# Part 1: Diff Review
+# Part 1: Uncommitted Diff
 
-Diff: extract `buildSortedChildrenMap`, add F2 binding, add ee sequence e2e test.
+Diff contents: extract `buildSortedChildrenMap`, add F2 binding, add ee sequence e2e test.
 
-## Correctness (10 agents)
+Files changed: `outline-store.ts`, `keyboard.ts`, `smoke.spec.ts`, 2 snapshot PNGs.
+
+## Verdict: Ship with 2 fixes
+
+The diff is correct, introduces zero bugs, and scores net positive (+4/6). But two changes need adjustment before committing.
+
+### DIFF-FIX-1: Revert one-liner push to multi-line
+
+Location: `outline-store.ts` line ~77 (in `buildVisibleItems`) and line ~112 (in `buildFilteredVisibleItems`).
+
+The diff compacted this:
+```
+result.push({
+  item,
+  depth,
+  childCount: itemChildren.length,
+  hasChildren: itemChildren.length > 0,
+})
+```
+into:
+```
+result.push({ item, depth, childCount: itemChildren.length, hasChildren: itemChildren.length > 0 })
+```
+
+Revert to multi-line because: 109 chars, inconsistent with rest of file where all multi-field objects are spread out. Also extract `const childCount = itemChildren.length` to eliminate redundant computation.
+
+### DIFF-FIX-2: Rename buildSortedChildrenMap to buildChildrenByParentMap
+
+Location: `outline-store.ts` — function definition + 2 call sites.
+
+`buildSortedChildrenMap` over-specifies (sorting is implementation detail) and under-specifies (doesn't say "by parent"). `buildChildrenByParentMap` fits existing get/build naming convention and makes the grouping dimension explicit.
+
+## Correctness review (10 agents) — all clean
 
 1. Correctness — NO ISSUES
 2. Refactor equivalence — NO ISSUES. buildSortedChildrenMap produces identical results to inline code.
@@ -17,50 +49,46 @@ Diff: extract `buildSortedChildrenMap`, add F2 binding, add ee sequence e2e test
 5. API consistency — NO ISSUES. Naming, style all match existing patterns.
 6. CLAUDE.md compliance — NO ISSUES
 7. Fresh eyes — NO ISSUES. Refactor improves readability, clear intent.
-8. E2E test quality — OBSERVATION. Missing screenshot after ee edit. F2 edit captures `04-after-edit.png` but ee edit has no snapshot.
-9. Edge cases — OBSERVATION. F2 while already editing is redundant (not harmful). startEditing re-sets editingId to same value.
-10. Regression risk — LOW. ee sequence timing depends on @tanstack/hotkeys sequence timeout (default 1000ms). Should be fine but could be flaky on very slow CI.
 
-## Readability and cure vs disease (7 agents)
+## Observations (not blockers)
 
-### Line density — REVERT TO MULTI-LINE
-The one-liner `result.push({ item, depth, childCount: itemChildren.length, hasChildren: itemChildren.length > 0 })` is 109 chars, inconsistent with rest of file where all multi-field objects are spread out. Hides redundant `itemChildren.length` computation.
+1. **E2E test quality:** Missing screenshot after ee edit. F2 edit captures `04-after-edit.png` but ee edit has no snapshot. Not blocking — the test still verifies text content.
+2. **Edge cases:** F2 while already editing is redundant (not harmful). startEditing re-sets editingId to same value.
+3. **Regression risk:** LOW. ee sequence timing depends on @tanstack/hotkeys sequence timeout (default 1000ms). Should be fine but could be flaky on very slow CI.
+4. **Snapshot PNGs:** Diff modifies 2 snapshot images. No agent verified they look visually correct — assumed correct because tests pass.
 
-### Abstraction naming — NAME IS MISLEADING
-`buildSortedChildrenMap` over-specifies (sorting is implementation detail) and under-specifies (doesn't say "by parent"). Suggestion: `buildChildrenByParentMap`. Fits existing get/build naming convention.
+## Design opinions (7 agents, split verdicts preserved)
 
-### Code flow tracing — EXTRACTION HELPS DEBUGGING
-Separates filtering, grouping, and walking into isolatable steps. Each step independently testable.
-
-### Was duplication bad? — SPLIT VERDICT
-The agents genuinely disagreed here:
+### Was the extraction worth it? — SPLIT VERDICT
+The agents genuinely disagreed:
 1. **Against extraction:** Only 2 call sites, 8 lines each. The duplication was harmless — both blocks were unlikely to diverge. Extraction traded 8 inline lines for a 13-line function + indirection. Classic "extract because it reduces line count" rather than because it enables reuse. At this codebase size, net loss.
 2. **For extraction:** DRY principle satisfied, each function now does one thing, buildSortedChildrenMap is independently testable, buildFilteredVisibleItems is shorter and its intent clearer.
 3. **Synthesis:** The extraction is fine but only barely justified at 2 call sites. Both perspectives are valid.
 
 ### Filter hiding — .filter() IS MORE EXPLICIT
-`items.filter(i => visibleIds.has(i.id))` is syntactically more explicit than a `continue` inside a loop. But `visibleIds` purpose is 15 lines away from the call site — the semantic intent is less obvious. A named intermediate variable would help: `const itemsInFilteredTree = items.filter(...)`.
+`items.filter(i => visibleIds.has(i.id))` is syntactically more explicit than a `continue` inside a loop. But `visibleIds` purpose is 15 lines away from the call site — the semantic intent is less obvious. A named intermediate variable would help: `const itemsInFilteredTree = items.filter(...)`. Not blocking — cosmetic.
 
 ### F2 binding — PULLS ITS WEIGHT
 Standard convention (Excel, VS Code, file managers). Additive discoverability, no confusion with ee. Users coming from non-vim backgrounds will try F2 first.
 
 ### ee test — SPLIT VERDICT
-The agents disagreed:
 1. **Against:** Redundant. Both F2 and ee call `store.startEditing` — same code path. The ee test validates that `@tanstack/hotkeys` parses `['E', 'E']` correctly, which is the library's job, not our code's.
 2. **For:** The sequence matcher (`sq()`) is a genuinely different code path through `@tanstack/hotkeys` than single-key (`hk()`). Testing both validates our wrapper infrastructure.
 3. **Synthesis:** Worth keeping — it tests the sequence infrastructure which is a different code path from single-key.
 
-### Net assessment scores
+### Code flow tracing — EXTRACTION HELPS DEBUGGING
+Separates filtering, grouping, and walking into isolatable steps. Each step independently testable.
+
+### Net assessment
 1. buildSortedChildrenMap extraction: +2 (clearly better)
 2. F2 binding: +1 (net positive)
 3. ee test: +1 (net positive)
-4. Overall: ship as-is
 
 ---
 
-# Part 2: Bugs
+# Part 2: Bugs (pre-existing)
 
-5 confirmed bugs. All pre-existing (not introduced by the diff).
+5 confirmed bugs found in existing code. None introduced by the diff.
 
 ## BUG-1: deleteItem doesn't clear editingId (HIGH)
 
@@ -205,7 +233,7 @@ After Enter/Escape in edit mode, DOM focus goes nowhere. Same root cause as BUG-
 2. buildSortedChildrenMap already groups by parent but isn't reused by these helpers
 3. OutlineItem event handlers extract item.id from full VisibleItem
 
-**Fix plan:** Add `get itemById()` computed map for O(1) lookups. Refactor `getAncestorIds` to use it — worst-case pathology is search filtering (500 matching items × 3 ancestor lookups × O(n) find = 1.5M iterations → O(500 × 20) with map).
+**Fix plan:** Add `get itemById()` computed map for O(1) lookups. Refactor `getAncestorIds` to use it — worst-case pathology is search filtering (500 matching items x 3 ancestor lookups x O(n) find = 1.5M iterations, reduced to O(500 x 20) with map).
 
 **Not fixing now:**
 1. getSiblings childrenMap threading — negligible at current scale (<30 items). Profile first at 1000+ items.
@@ -266,7 +294,7 @@ outlineStore is a god-object with ~25 public members. Every component sees the f
 2. **(b) Single store + facade hooks** — keep store, wrap in `useOutlineView()`, `useOutlineActions()` per component. Minimal refactor. But hides rather than fixes the coupling.
 3. **(c) Computed views as virtual sub-stores** — keep one store, expose `store.focusView`, `store.editingView` etc. as computed getters. No new files. But views are descriptive, not prescriptive.
 
-**Recommended:** (a) when collab/sync demands it (Phase 3). Premature now — would be guessing at the right boundary between local/shared state until you build collab.
+**Recommended:** (a) when collab/sync demands it. Premature now — would be guessing at the right boundary between local/shared state until you build collab.
 
 ### ARCH-2: No privilege boundaries
 Every component imports stores directly with full mutation access. No distinction between local UI state (focusedId, filterQuery) and shared state (items, done status).
@@ -276,7 +304,7 @@ Every component imports stores directly with full mutation access. No distinctio
 2. **(b) Computed views + action objects** — stores expose read-only views and scoped action interfaces. More infrastructure but scales to collab.
 3. **(c) Middleware wrapper** — proxy layer intercepts all mutations. Most powerful for logging/validation/sync. But opaque and hard to debug.
 
-**Recommended:** (a) for near-term, (b) when collab demands it. Inject keyboard bindings from App.tsx instead of direct store imports. Defer to Phase 3.
+**Recommended:** (a) for near-term, (b) when collab demands it. Inject keyboard bindings from App.tsx instead of direct store imports. Defer until collab/sync.
 
 ### ARCH-3: Circular intent flow
 keyboard.ts -> store <- components creates two independent mutation paths.
@@ -293,7 +321,7 @@ undoStack is module-level, not observable. UI can't show "undo available" or gra
 2. **(b) Separate undoStore** — clean separation, no localStorage bloat, natural redo support. ~100 lines, 2 files. BottomBar observes `undoStore.canUndo`. keyboard.ts binds `Mod+Shift+Z` to redo.
 3. **(c) Thin computed wrapper** — keep undoStack module-level, add observable `canUndo` getter. Quickest but no redo support, doesn't fix BUG-2.
 
-**Recommended:** (b) — clean separation, redo support, fixes ARCH-4 and enables BUG-2 fix. Defer to Phase 3.
+**Recommended:** (b) — clean separation, redo support, fixes ARCH-4 and enables BUG-2 fix. Defer until collab/sync.
 
 ### ARCH-5: Theme logic duplicated
 Both ThemeSwitcher and CommandPalette loop over themes array independently.
@@ -309,38 +337,44 @@ Both ThemeSwitcher and CommandPalette loop over themes array independently.
 
 # Fix Sequencing
 
-## Phase 1: Critical bugs + style nits (fix now, <1 day)
+## Step 0: Fix the diff (before committing uncommitted changes)
 
-1. BUG-1: deleteItem clears editingId
-2. BUG-2: undo restores focusedId (fix before BUG-3)
-3. BUG-3: startEditing guards item existence
-4. BUG-4+5: Focus manager for DOM focus restoration
-5. Style: Revert one-liner, rename buildChildrenByParentMap
+1. DIFF-FIX-1: Revert one-liner push to multi-line, extract childCount variable
+2. DIFF-FIX-2: Rename buildSortedChildrenMap to buildChildrenByParentMap
+
+Then commit the diff.
+
+## Phase 1: Pre-existing bugs (fix now, <1 day)
+
+3. BUG-1: deleteItem clears editingId
+4. BUG-2: undo restores focusedId (fix before BUG-3)
+5. BUG-3: startEditing guards item existence
+6. BUG-4+5: Focus manager for DOM focus restoration
 
 ## Phase 2: Foundation for scaling (before next feature, ~2-3 days)
 
-6. ISI-1: Underscore prefix for internal helpers
-7. ISI-2: Type narrowing (InlineTag union, styleMap Record, props)
-8. ISI-3: OutlineItem core/local split
-9. POLP-1: Store facade segmentation
-10. POLP-2: itemById computed map
-11. POLP-3: Remove side effects and duplicates
-12. TDA-1: Add isFocused(id), isEditing(id), isThemeActive(name) getters
-13. TDA-2: Required id on all 9 mutation methods
-14. TDA-3: Hotkey discriminated union
-15. ARCH-5: Command registry for CommandPalette
+7. ISI-1: Underscore prefix for internal helpers
+8. ISI-2: Type narrowing (InlineTag union, styleMap Record, props)
+9. ISI-3: OutlineItem core/local split
+10. POLP-1: Store facade segmentation
+11. POLP-2: itemById computed map
+12. POLP-3: Remove side effects and duplicates
+13. TDA-1: Add isFocused(id), isEditing(id), isThemeActive(name) getters
+14. TDA-2: Required id on all 9 mutation methods
+15. TDA-3: Hotkey discriminated union
+16. ARCH-5: Command registry for CommandPalette
 
 ## Phase 3: Architectural scaling (when adding collab/sync)
 
-16. ARCH-1: Domain store splitting
-17. ARCH-2: Privilege boundaries via context+hooks
-18. ARCH-3: Command/dispatch layer
-19. ARCH-4: Observable undoStore with redo
+17. ARCH-1: Domain store splitting
+18. ARCH-2: Privilege boundaries via context+hooks
+19. ARCH-3: Command/dispatch layer
+20. ARCH-4: Observable undoStore with redo
 
 ## Issue counts
 
 | Section | Scope | Issues |
 |---------|-------|--------|
-| Part 1 — Diff review | diff only | 0 bugs, 2 style nits, 3 observations |
+| Part 1 — Diff | uncommitted diff | 0 bugs, 2 fixes needed, 4 observations |
 | Part 2 — Bugs | full src/ | 5 confirmed bugs, 4 false positives corrected, 7 unaudited gaps |
 | Part 3 — Architecture | full src/ | ~40 ISI/POLP/TDA violations, 5 ARCH issues |
