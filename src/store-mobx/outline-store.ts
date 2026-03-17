@@ -231,14 +231,18 @@ export const outlineStore = makeAutoObservable({
     }
   },
 
-  toggleCollapse(id: string) {
-    const item = this.items.find((i) => i.id === id)
+  toggleCollapse(id?: string) {
+    const targetId = id ?? this.focusedId
+    if (!targetId) return
+    const item = this.items.find((i) => i.id === targetId)
     if (item) item.collapsed = !item.collapsed
   },
 
-  toggleDone(id: string) {
+  toggleDone(id?: string) {
+    const targetId = id ?? this.focusedId
+    if (!targetId) return
     this.pushUndo()
-    const item = this.items.find((i) => i.id === id)
+    const item = this.items.find((i) => i.id === targetId)
     if (item) item.done = !item.done
   },
 
@@ -256,10 +260,16 @@ export const outlineStore = makeAutoObservable({
   },
 
   setFocused(id: string) { this.focusedId = id },
-  startEditing(id: string) { this.editingId = id; this.focusedId = id },
+  startEditing(id?: string) {
+    const targetId = id ?? this.focusedId
+    if (!targetId) return
+    this.editingId = targetId
+    this.focusedId = targetId
+  },
   stopEditing() { this.editingId = null },
   setFilterQuery(query: string) { this.filterQuery = query },
   setCommandPaletteOpen(open: boolean) { this.commandPaletteOpen = open },
+  toggleCommandPalette() { this.commandPaletteOpen = !this.commandPaletteOpen },
 
   updateItemText(id: string, text: string) {
     this.pushUndo()
@@ -268,14 +278,16 @@ export const outlineStore = makeAutoObservable({
     this.editingId = null
   },
 
-  createSibling(afterId: string) {
-    const current = this.items.find((i) => i.id === afterId)
+  createSibling(afterId?: string) {
+    const targetId = afterId ?? this.focusedId
+    if (!targetId) return
+    const current = this.items.find((i) => i.id === targetId)
     if (!current) return
 
     this.pushUndo()
 
     const siblings = getSiblings(this.items, current.parentId)
-    const idx = siblings.findIndex((s) => s.id === afterId)
+    const idx = siblings.findIndex((s) => s.id === targetId)
     const after = siblings[idx]?.sortKey ?? null
     const before = siblings[idx + 1]?.sortKey ?? null
 
@@ -292,19 +304,21 @@ export const outlineStore = makeAutoObservable({
     this.editingId = newId
   },
 
-  createChild(parentId: string) {
-    const parent = this.items.find((i) => i.id === parentId)
+  createChild(parentId?: string) {
+    const targetId = parentId ?? this.focusedId
+    if (!targetId) return
+    const parent = this.items.find((i) => i.id === targetId)
     if (!parent) return
 
     this.pushUndo()
 
-    const children = getSiblings(this.items, parentId)
+    const children = getSiblings(this.items, targetId)
     const newId = crypto.randomUUID()
 
     parent.collapsed = false
     this.items.push({
       id: newId,
-      parentId,
+      parentId: targetId,
       sortKey: sortKeyAfterLast(children),
       text: '',
       collapsed: false,
@@ -314,27 +328,31 @@ export const outlineStore = makeAutoObservable({
     this.editingId = newId
   },
 
-  deleteItem(id: string) {
-    const current = this.items.find((i) => i.id === id)
+  deleteItem(id?: string) {
+    const targetId = id ?? this.focusedId
+    if (!targetId) return
+    const current = this.items.find((i) => i.id === targetId)
     if (!current) return
 
     this.pushUndo()
 
     const visible = this.visibleItems
-    const visIdx = visible.findIndex((v) => v.item.id === id)
+    const visIdx = visible.findIndex((v) => v.item.id === targetId)
     const prev = visIdx > 0 ? visible[visIdx - 1] : visible[visIdx + 1]
     this.focusedId = prev ? prev.item.id : null
 
-    const idsToDelete = new Set([id, ...getDescendantIds(this.items, id)])
+    const idsToDelete = new Set([targetId, ...getDescendantIds(this.items, targetId)])
     this.items = this.items.filter((i) => !idsToDelete.has(i.id))
   },
 
-  indentItem(id: string) {
-    const current = this.items.find((i) => i.id === id)
+  indentItem(id?: string) {
+    const targetId = id ?? this.focusedId
+    if (!targetId) return
+    const current = this.items.find((i) => i.id === targetId)
     if (!current) return
 
     const siblings = getSiblings(this.items, current.parentId)
-    const idx = siblings.findIndex((s) => s.id === id)
+    const idx = siblings.findIndex((s) => s.id === targetId)
     if (idx <= 0) return
 
     this.pushUndo()
@@ -347,8 +365,10 @@ export const outlineStore = makeAutoObservable({
     newParent.collapsed = false
   },
 
-  outdentItem(id: string) {
-    const current = this.items.find((i) => i.id === id)
+  outdentItem(id?: string) {
+    const targetId = id ?? this.focusedId
+    if (!targetId) return
+    const current = this.items.find((i) => i.id === targetId)
     if (!current || current.parentId === null) return
 
     const parent = this.items.find((i) => i.id === current.parentId)
@@ -366,12 +386,14 @@ export const outlineStore = makeAutoObservable({
     current.sortKey = sortKeyBetween(afterParent, beforeNext)
   },
 
-  moveItem(id: string, direction: 'up' | 'down') {
-    const current = this.items.find((i) => i.id === id)
+  moveItem(direction: 'up' | 'down', id?: string) {
+    const targetId = id ?? this.focusedId
+    if (!targetId) return
+    const current = this.items.find((i) => i.id === targetId)
     if (!current) return
 
     const siblings = getSiblings(this.items, current.parentId)
-    const idx = siblings.findIndex((s) => s.id === id)
+    const idx = siblings.findIndex((s) => s.id === targetId)
 
     if (direction === 'up' && idx <= 0) return
     if (direction === 'down' && idx >= siblings.length - 1) return
