@@ -53,18 +53,21 @@ function getAncestorIds(items: OutlineItem[], itemId: string): Set<string> {
   return ancestors
 }
 
-function buildVisibleItems(items: OutlineItem[]): VisibleItem[] {
+function buildSortedChildrenByParentMap(items: OutlineItem[]): Map<string | null, OutlineItem[]> {
   const childrenMap = new Map<string | null, OutlineItem[]>()
   for (const item of items) {
     const siblings = childrenMap.get(item.parentId) ?? []
     siblings.push(item)
     childrenMap.set(item.parentId, siblings)
   }
-
   for (const siblings of childrenMap.values()) {
     siblings.sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0))
   }
+  return childrenMap
+}
 
+function buildVisibleItems(items: OutlineItem[]): VisibleItem[] {
+  const childrenMap = buildSortedChildrenByParentMap(items)
   const result: VisibleItem[] = []
 
   function walk(parentId: string | null, depth: number) {
@@ -104,25 +107,19 @@ function buildFilteredVisibleItems(items: OutlineItem[], query: string): Visible
     }
   }
 
-  const childrenMap = new Map<string | null, OutlineItem[]>()
-  for (const item of items) {
-    if (!visibleIds.has(item.id)) continue
-    const siblings = childrenMap.get(item.parentId) ?? []
-    siblings.push(item)
-    childrenMap.set(item.parentId, siblings)
-  }
-
-  for (const siblings of childrenMap.values()) {
-    siblings.sort((a, b) => (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0))
-  }
-
+  const childrenMap = buildSortedChildrenByParentMap(items.filter((i) => visibleIds.has(i.id)))
   const result: VisibleItem[] = []
 
   function walk(parentId: string | null, depth: number) {
     const children = childrenMap.get(parentId) ?? []
     for (const item of children) {
       const itemChildren = childrenMap.get(item.id) ?? []
-      result.push({ item, depth, childCount: itemChildren.length, hasChildren: itemChildren.length > 0 })
+      result.push({
+        item,
+        depth,
+        childCount: itemChildren.length,
+        hasChildren: itemChildren.length > 0,
+      })
       if (itemChildren.length > 0) walk(item.id, depth + 1)
     }
   }

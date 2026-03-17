@@ -36,6 +36,16 @@ test('smoke — happy path through core interactions', async ({ page }) => {
   await expect(page.locator('.outline-item-row.is-focused')).toContainText('Edited by Playwright')
   await expect(page).toHaveScreenshot('04-after-edit.png')
 
+  // Edit via ee sequence: navigate, ee to start, type, Enter to save
+  await page.keyboard.press('j')
+  await page.keyboard.press('e')
+  await page.keyboard.press('e')
+  const eeInput = page.locator('.outline-item-row.is-focused input')
+  await expect(eeInput).toBeFocused()
+  await eeInput.fill('Edited via ee')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.outline-item-row.is-focused')).toContainText('Edited via ee')
+
   // Command palette: open and close
   await page.keyboard.press('Control+k')
   await expect(page.locator('.command-palette-item').first()).toBeVisible()
