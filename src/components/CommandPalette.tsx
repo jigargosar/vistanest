@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo, type KeyboardEvent } from 'react'
 import { observer } from 'mobx-react-lite'
 import { outlineStore } from '../store-mobx/outline-store'
 import { themeStore, themes } from '../store-mobx/theme-store'
@@ -75,7 +75,7 @@ export const CommandPalette = observer(function CommandPalette() {
   )
 
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
+    (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
         close()

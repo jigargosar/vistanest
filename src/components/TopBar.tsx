@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, type KeyboardEvent } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useEventListener } from '@react-hooks-library/core'
 import { ThemeSwitcher } from './ThemeSwitcher'
@@ -21,7 +21,7 @@ export const TopBar = observer(function TopBar() {
   })
 
   const handleSearchKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
+    (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Escape') {
         e.preventDefault()
         outlineStore.setFilterQuery('')

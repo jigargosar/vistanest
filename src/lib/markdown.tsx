@@ -1,7 +1,7 @@
-import type React from 'react'
+import { type ReactNode } from 'react'
 
 /** Parse simple markdown: ## headings, **bold**, `code`, *italic* */
-export function renderMarkdown(text: string): { element: React.ReactNode; isHeading: boolean } {
+export function renderMarkdown(text: string): { element: ReactNode; isHeading: boolean } {
   const h3Match = text.match(/^###\s+(.+)$/)
   const h2Match = text.match(/^##\s+(.+)$/)
   const h1Match = text.match(/^#\s+(.+)$/)
@@ -14,8 +14,8 @@ export function renderMarkdown(text: string): { element: React.ReactNode; isHead
 }
 
 /** Parse inline markdown: **bold**, *italic*, `code` */
-function inlineMarkdown(text: string): React.ReactNode {
-  const parts: React.ReactNode[] = []
+function inlineMarkdown(text: string): ReactNode {
+  const parts: ReactNode[] = []
   let remaining = text
   let key = 0
 

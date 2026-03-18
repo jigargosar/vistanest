@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react'
+import { useCallback, useEffect, useRef, useState, useMemo, type MouseEvent, type KeyboardEvent, type CSSProperties } from 'react'
 import { observer } from 'mobx-react-lite'
 import type { VisibleItem } from '../store-mobx/model'
 import { outlineStore } from '../store-mobx/outline-store'
@@ -32,7 +32,7 @@ export const OutlineItem = observer(function OutlineItem({
   }, [isEditing])
 
   const handleToggle = useCallback(
-    (e: React.MouseEvent) => {
+    (e: MouseEvent) => {
       e.stopPropagation()
       outlineStore.toggleCollapse(item.id)
     },
@@ -48,7 +48,7 @@ export const OutlineItem = observer(function OutlineItem({
   }, [item.id])
 
   const handleEditKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
+    (e: KeyboardEvent<HTMLInputElement>) => {
       if (e.key === 'Enter') {
         e.preventDefault()
         outlineStore.updateItemText(item.id, editText)
@@ -175,7 +175,7 @@ export const OutlineItem = observer(function OutlineItem({
 })
 
 function InlineTag({ label, type }: { label: string; type: string }) {
-  const styleMap: Record<string, React.CSSProperties> = {
+  const styleMap: Record<string, CSSProperties> = {
     priority: {
       background: 'rgba(192, 84, 79, 0.12)',
       color: 'var(--red-soft)',
