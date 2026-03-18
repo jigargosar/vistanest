@@ -1,45 +1,21 @@
-import { useState, useRef, useEffect } from 'react'
+import { useRef } from 'react'
 import { observer } from 'mobx-react-lite'
+import { useClickOutside, useKeyStroke, useToggle } from '@react-hooks-library/core'
 import { themeStore, themes } from '../store-mobx/theme-store'
 
 export const ThemeSwitcher = observer(function ThemeSwitcher() {
-  const [open, setOpen] = useState(false)
+  const { bool: open, toggle, setFalse: closePanel } = useToggle()
   const currentTheme = themeStore.currentTheme
-  const panelRef = useRef<HTMLDivElement>(null)
-  const buttonRef = useRef<HTMLButtonElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!open) return
-
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        panelRef.current &&
-        !panelRef.current.contains(e.target as Node) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false)
-      }
-    }
-
-    function handleEscape(e: KeyboardEvent) {
-      if (e.key === 'Escape') setOpen(false)
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleEscape)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleEscape)
-    }
-  }, [open])
+  useClickOutside(containerRef, closePanel)
+  useKeyStroke(['Escape'], closePanel)
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <button
-        ref={buttonRef}
         title="Theme"
-        onClick={() => setOpen(!open)}
+        onClick={toggle}
         className={`topbar-btn w-8 h-8 flex items-center justify-center rounded-md border-none cursor-pointer transition-colors ${open ? 'is-active' : ''}`}
       >
         <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -53,7 +29,6 @@ export const ThemeSwitcher = observer(function ThemeSwitcher() {
 
       {open && (
         <div
-          ref={panelRef}
           className="absolute right-0 top-10 rounded-lg overflow-hidden z-50"
           style={{
             background: 'var(--bg-raised)',
@@ -76,7 +51,7 @@ export const ThemeSwitcher = observer(function ThemeSwitcher() {
               key={theme.name}
               onClick={() => {
                 themeStore.setTheme(theme.name)
-                setOpen(false)
+                closePanel()
               }}
               className={`theme-option w-full flex items-center gap-3 px-3 py-2 border-none cursor-pointer transition-colors text-left ${currentTheme === theme.name ? 'is-active' : ''}`}
               style={{

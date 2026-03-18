@@ -1,17 +1,16 @@
-import { useRef, useState, useCallback, type KeyboardEvent } from 'react'
+import { useRef } from 'react'
 import { observer } from 'mobx-react-lite'
-import { useEventListener } from '@react-hooks-library/core'
+import { useKeyStroke, useActiveElement } from '@react-hooks-library/core'
 import { ThemeSwitcher } from './ThemeSwitcher'
 import { outlineStore } from '../store-mobx/outline-store'
 
 export const TopBar = observer(function TopBar() {
   const filterQuery = outlineStore.filterQuery
   const searchRef = useRef<HTMLInputElement>(null)
-  const [searchFocused, setSearchFocused] = useState(false)
+  const { activeElement } = useActiveElement()
 
-  useEventListener('keydown', (e) => {
+  useKeyStroke(['/'], (e) => {
     if (
-      e.key === '/' &&
       document.activeElement?.tagName !== 'INPUT' &&
       document.activeElement?.tagName !== 'TEXTAREA'
     ) {
@@ -20,18 +19,13 @@ export const TopBar = observer(function TopBar() {
     }
   })
 
-  const handleSearchKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        outlineStore.setFilterQuery('')
-        searchRef.current?.blur()
-      }
-    },
-    [],
-  )
+  useKeyStroke(['Escape'], (e) => {
+    e.preventDefault()
+    outlineStore.setFilterQuery('')
+    searchRef.current?.blur()
+  }, { target: searchRef })
 
-  const isFocused = searchFocused || filterQuery.length > 0
+  const isFocused = activeElement === searchRef.current || filterQuery.length > 0
 
   return (
     <header
@@ -71,9 +65,6 @@ export const TopBar = observer(function TopBar() {
           placeholder="Search items..."
           value={filterQuery}
           onChange={(e) => outlineStore.setFilterQuery(e.target.value)}
-          onFocus={() => setSearchFocused(true)}
-          onBlur={() => setSearchFocused(false)}
-          onKeyDown={handleSearchKeyDown}
           className="w-full h-8 rounded-md pl-8 pr-10 text-[13px] outline-none"
           style={{
             background: isFocused ? 'var(--bg-focus)' : 'var(--bg-raised)',

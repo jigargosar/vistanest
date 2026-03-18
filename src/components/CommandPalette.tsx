@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback, useMemo, type KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { observer } from 'mobx-react-lite'
+import { useKeyStroke, useClickOutside } from '@react-hooks-library/core'
 import { outlineStore } from '../store-mobx/outline-store'
 import { themeStore, themes } from '../store-mobx/theme-store'
 
@@ -17,6 +18,7 @@ export const CommandPalette = observer(function CommandPalette() {
   const [query, setQuery] = useState('')
   const [selectedIndex, setSelectedIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   const commands = useMemo((): Command[] => {
     const id = focusedId
@@ -62,37 +64,35 @@ export const CommandPalette = observer(function CommandPalette() {
     }
   }, [filteredCommands.length, selectedIndex])
 
-  const close = useCallback(() => {
-    outlineStore.setCommandPaletteOpen(false)
-  }, [])
+  const close = () => outlineStore.setCommandPaletteOpen(false)
 
-  const executeCommand = useCallback(
-    (cmd: Command) => {
-      close()
-      cmd.action()
-    },
-    [close],
-  )
+  const executeCommand = (cmd: Command) => {
+    close()
+    cmd.action()
+  }
 
-  const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        close()
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        setSelectedIndex((i) => Math.min(i + 1, filteredCommands.length - 1))
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        setSelectedIndex((i) => Math.max(i - 1, 0))
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        const cmd = filteredCommands[selectedIndex]
-        if (cmd) executeCommand(cmd)
-      }
-    },
-    [close, filteredCommands, selectedIndex, executeCommand],
-  )
+  useKeyStroke(['Escape'], (e) => {
+    e.preventDefault()
+    close()
+  }, { target: dialogRef })
+
+  useKeyStroke(['ArrowDown'], (e) => {
+    e.preventDefault()
+    setSelectedIndex((i) => Math.min(i + 1, filteredCommands.length - 1))
+  }, { target: dialogRef })
+
+  useKeyStroke(['ArrowUp'], (e) => {
+    e.preventDefault()
+    setSelectedIndex((i) => Math.max(i - 1, 0))
+  }, { target: dialogRef })
+
+  useKeyStroke(['Enter'], (e) => {
+    e.preventDefault()
+    const cmd = filteredCommands[selectedIndex]
+    if (cmd) executeCommand(cmd)
+  }, { target: dialogRef })
+
+  useClickOutside(dialogRef, close)
 
   if (!isOpen) return null
 
@@ -100,11 +100,9 @@ export const CommandPalette = observer(function CommandPalette() {
     <div
       className="fixed inset-0 z-[100] flex items-start justify-center"
       style={{ background: 'rgba(0, 0, 0, 0.4)', paddingTop: 120 }}
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) close()
-      }}
     >
       <div
+        ref={dialogRef}
         className="rounded-lg overflow-hidden"
         style={{
           width: 440,
@@ -113,7 +111,6 @@ export const CommandPalette = observer(function CommandPalette() {
           border: '1px solid var(--border-dim)',
           boxShadow: '0 16px 48px rgba(0,0,0,0.4)',
         }}
-        onKeyDown={handleKeyDown}
       >
         <div
           className="flex items-center px-4 gap-3"
@@ -155,6 +152,7 @@ export const CommandPalette = observer(function CommandPalette() {
               }}
               onMouseEnter={() => setSelectedIndex(index)}
               onMouseDown={(e) => { e.preventDefault(); executeCommand(cmd) }}
+
             >
               <span>{cmd.label}</span>
               {cmd.shortcut && (

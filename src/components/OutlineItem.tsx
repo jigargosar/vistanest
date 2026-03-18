@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState, useMemo, type MouseEvent, type KeyboardEvent, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, useMemo, type CSSProperties } from 'react'
 import { observer } from 'mobx-react-lite'
+import { useKeyStroke } from '@react-hooks-library/core'
 import type { VisibleItem } from '../store-mobx/model'
 import { outlineStore } from '../store-mobx/outline-store'
 import { renderMarkdown } from '../lib/markdown'
@@ -31,38 +32,15 @@ export const OutlineItem = observer(function OutlineItem({
     }
   }, [isEditing])
 
-  const handleToggle = useCallback(
-    (e: MouseEvent) => {
-      e.stopPropagation()
-      outlineStore.toggleCollapse(item.id)
-    },
-    [item.id],
-  )
-
-  const handleRowClick = useCallback(() => {
-    outlineStore.setFocused(item.id)
-  }, [item.id])
-
-  const handleDoubleClick = useCallback(() => {
-    outlineStore.startEditing(item.id)
-  }, [item.id])
-
-  const handleEditKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === 'Enter') {
-        e.preventDefault()
-        outlineStore.updateItemText(item.id, editText)
-      } else if (e.key === 'Escape') {
-        e.preventDefault()
-        outlineStore.stopEditing()
-      }
-    },
-    [item.id, editText],
-  )
-
-  const handleEditBlur = useCallback(() => {
+  useKeyStroke(['Enter'], (e) => {
+    e.preventDefault()
     outlineStore.updateItemText(item.id, editText)
-  }, [item.id, editText])
+  }, { target: inputRef })
+
+  useKeyStroke(['Escape'], (e) => {
+    e.preventDefault()
+    outlineStore.stopEditing()
+  }, { target: inputRef })
 
   const rendered = useMemo(() => renderMarkdown(item.text), [item.text])
 
@@ -77,8 +55,8 @@ export const OutlineItem = observer(function OutlineItem({
   return (
     <div
       className={rowClasses}
-      onClick={handleRowClick}
-      onDoubleClick={handleDoubleClick}
+      onClick={() => outlineStore.setFocused(item.id)}
+      onDoubleClick={() => outlineStore.startEditing(item.id)}
       style={{
         paddingLeft: depth * 28 + 8,
         paddingRight: 8,
@@ -88,7 +66,7 @@ export const OutlineItem = observer(function OutlineItem({
     >
       {/* Chevron toggle */}
       <button
-        onClick={hasChildren ? handleToggle : undefined}
+        onClick={hasChildren ? (e) => { e.stopPropagation(); outlineStore.toggleCollapse(item.id) } : undefined}
         className="chevron-toggle w-6 flex items-center justify-center shrink-0 border-none rounded p-0 transition-colors"
         style={{
           height: 28,
@@ -117,8 +95,7 @@ export const OutlineItem = observer(function OutlineItem({
           type="text"
           value={editText}
           onChange={(e) => setEditText(e.target.value)}
-          onKeyDown={handleEditKeyDown}
-          onBlur={handleEditBlur}
+          onBlur={() => outlineStore.updateItemText(item.id, editText)}
           className="flex-1 outline-none rounded px-1"
           style={{
             fontSize: 16,
