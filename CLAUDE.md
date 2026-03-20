@@ -99,3 +99,5 @@ Item text supports `## headings`, `**bold**`, `*italic*`, `` `code` ``. Parsed a
 5. You should use in-memory snapshot array with `toJS()` before each mutation for undo
 6. You can find reference docs in `docs/reference/zustand-docs-summary/` and `docs/reference/legend-state-research/`
 7. `@react-hooks-library/core` usage in components is legacy — not a pattern to follow. You should write new hooks in `src/lib/hooks.ts` instead. The library will be fully replaced before v1 ships.
+
+8. New code must use Tailwind classes for static values — not inline style. Inline var() is acceptable for theme colors only until @theme inline lands. Do not pattern-match existing code — it predates these rules. See `docs/refactoring-plan-fix-styling-inconsistencies.md` "New Code Direction" section.

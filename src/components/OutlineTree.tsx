@@ -9,6 +9,7 @@ export const OutlineTree = observer(function OutlineTree() {
   const editingId = outlineStore.editingId
   const totalItems = outlineStore.items.length
   const completedItems = outlineStore.completedCount
+  const hideCompleted = outlineStore.hideCompleted
 
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -58,6 +59,15 @@ export const OutlineTree = observer(function OutlineTree() {
           >
             <span>{totalItems} items</span>
             <span>{completedItems} completed</span>
+            {hideCompleted && completedItems > 0 && (
+              <span
+                className="cursor-pointer"
+                style={{ color: 'var(--accent)' }}
+                onClick={() => outlineStore.toggleHideCompleted()}
+              >
+                {completedItems} hidden — show
+              </span>
+            )}
             <span>Updated 2h ago</span>
           </div>
         </div>

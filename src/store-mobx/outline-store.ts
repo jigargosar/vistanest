@@ -40,12 +40,17 @@ export const outlineStore = makeAutoObservable({
   editingId: null as string | null,
   filterQuery: '',
   commandPaletteOpen: false,
+  hideCompleted: false,
 
   get visibleItems(): VisibleItem[] {
+    const items = this.hideCompleted
+      ? this.items.filter((i) => !i.done)
+      : this.items
+
     if (this.filterQuery.trim()) {
-      return buildFilteredVisibleItems(this.items, this.filterQuery.trim())
+      return buildFilteredVisibleItems(items, this.filterQuery.trim())
     }
-    return buildVisibleItems(this.items)
+    return buildVisibleItems(items)
   },
 
   get completedCount(): number {
@@ -78,6 +83,10 @@ export const outlineStore = makeAutoObservable({
     this.pushUndo()
     const item = this.items.find((i) => i.id === targetId)
     if (item) item.done = !item.done
+  },
+
+  toggleHideCompleted() {
+    this.hideCompleted = !this.hideCompleted
   },
 
   focusDown() { this.moveFocus('down') },

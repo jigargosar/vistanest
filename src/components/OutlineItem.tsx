@@ -96,6 +96,33 @@ export const OutlineItem = observer(function OutlineItem({
         </svg>
       </button>
 
+      {/* Checkbox */}
+      <button
+        onClick={(e) => { e.stopPropagation(); outlineStore.toggleDone(item.id) }}
+        className="item-checkbox shrink-0 flex items-center justify-center border-none rounded-sm p-0 cursor-pointer"
+        style={{
+          width: 16,
+          height: 16,
+          marginTop: 6,
+          background: item.done ? 'var(--accent)' : 'transparent',
+          border: item.done ? 'none' : '1.5px solid var(--text-ghost)',
+        }}
+      >
+        {item.done && (
+          <svg
+            className="w-2.5 h-2.5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--bg-deep)"
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        )}
+      </button>
+
       {/* Text content or edit input */}
       {isEditing ? (
         <input

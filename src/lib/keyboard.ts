@@ -33,6 +33,7 @@ export function setupKeyboard() {
     hk('Tab',           store.indentItem),
     hk('Shift+Tab',     store.outdentItem),
     hk('X',             store.toggleDone),
+    hk('H',             store.toggleHideCompleted),
 
     hk('F2',            store.startEditing),
     sq(['E', 'E'],      store.startEditing),

@@ -75,6 +75,20 @@ style={{ background: 'rgba(192, 84, 79, 0.12)', color: 'var(--red-soft)' }}
 className="bg-red-soft/10 text-red-soft"
 ```
 
+## New Code Direction
+
+Existing code is legacy. It was written before these principles existed. Don't copy its patterns.
+
+New code must use Tailwind classes for everything Tailwind can handle today — sizing, spacing, layout, borders, radius, font weights, display, flex, positioning. This is the primary rule. Most styling goes here.
+
+For theme colors, Tailwind tokens (bg-accent, text-primary) don't exist yet because the @theme inline block hasn't been added to global.css. So new code uses inline var() for colors temporarily: style={{ background: 'var(--accent)' }}. When @theme inline lands, these become className-only changes — no logic, no structural changes, just moving a color from style to className.
+
+Inline style is only for truly dynamic values — things computed from props or state at runtime, like paddingLeft: depth * 28. If a value doesn't change between renders, it doesn't belong in style.
+
+No hardcoded rgba or hex values. No re-declaring inherited properties like font-family. No copying existing component patterns as justification.
+
+The goal: new features should need zero or near-zero migration work when @theme inline lands. Write it right the first time.
+
 ## Solution: @theme inline
 
 Tailwind v4's `@theme inline` directive maps runtime CSS variables to Tailwind color tokens. The `inline` keyword is required because the variables are set at runtime by the theme store.
