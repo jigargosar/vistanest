@@ -55,6 +55,7 @@ function buildItemMap(items: OutlineItem[]): Map<string, OutlineItem> {
 
 // Simulate buildFilteredVisibleItems ancestor-collection phase
 // M items matched, each walks ancestors
+// @ts-ignore
 function benchFind(items: OutlineItem[], matchIds: string[]): number {
   const start = performance.now()
   const visibleIds = new Set<string>()

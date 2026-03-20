@@ -2,6 +2,8 @@ Board
 
 # Urgent
 
+1. Focused item scrolls out of viewport during J/K navigation — no scrollIntoView
+
 # InBasket
 
 # Ready
@@ -13,12 +15,12 @@ Board
 # In Progress
 
 1. v1 roadmap execution — see docs/v1-roadmap.md
-2. Enable persistence (roadmap item 1)
-3. Capture perf notes to bench/perf-notes.md, clean timing logs from code
 
 # Done
 
-1. ThemeSwitcher — merged two useEffects into one
+1. Enable persistence + clean test data (roadmap item 1)
+2. Capture perf notes to bench/perf-notes.md, clean timing logs from code
+3. ThemeSwitcher — merged two useEffects into one
 2. Removed vitest, puppeteer, and zustand devDependencies
 3. Fix getAncestorIds O(N) lookup — items.find() → Map.get(), 145ms → 0.7ms
 4. Fix OutlineItem props — pass observable item directly

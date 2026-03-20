@@ -34,7 +34,7 @@ Scope cut: No due dates, assignees, collaboration, real-time sync, offline-first
 
 | # | Item | Status |
 |---|------|--------|
-| 1 | Enable persistence + clean test data | In Progress |
+| 1 | Enable persistence + clean test data | Done |
 | 2 | Fix library fragility | Not started |
 | 3 | Checkbox + done UI | Not started |
 | 4 | Soft delete + trash | Not started |

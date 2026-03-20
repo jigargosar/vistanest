@@ -1,5 +1,5 @@
 import { makeAutoObservable, reaction, toJS } from 'mobx'
-import { sampleItems } from '../data/sample-items'
+import { starterItems } from '../data/sample-items'
 import {
   buildFilteredVisibleItems,
   buildVisibleItems,
@@ -15,8 +15,16 @@ import type { OutlineItem, VisibleItem } from './model'
 const STORAGE_KEY = 'vistanest-items-mobx'
 
 function loadItems(): OutlineItem[] {
-  localStorage.removeItem(STORAGE_KEY)
-  return sampleItems
+  try {
+    const json = localStorage.getItem(STORAGE_KEY)
+    if (json) {
+      const parsed = JSON.parse(json)
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+    }
+  } catch {
+    // corrupt data, fall through to defaults
+  }
+  return starterItems
 }
 
 // === Undo ===
@@ -28,7 +36,7 @@ const undoStack: OutlineItem[][] = []
 
 export const outlineStore = makeAutoObservable({
   items: loadItems() as OutlineItem[],
-  focusedId: '1-3' as string | null,
+  focusedId: null as string | null,
   editingId: null as string | null,
   filterQuery: '',
   commandPaletteOpen: false,
