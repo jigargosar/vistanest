@@ -10,7 +10,7 @@ Checkvist clone with full feature parity — keyboard-first hierarchical outline
 
 VistaNest v1 is shipped when:
 - Persistence works (data survives reload)
-- Library fragility from review3.1 is resolved
+- `@react-hooks-library/core` is fully replaced with custom hooks in `src/lib/hooks.ts`
 - Checkbox + done state is visible in UI
 - Soft delete with trash view works
 - Archive for done items works
@@ -98,3 +98,4 @@ Item text supports `## headings`, `**bold**`, `*italic*`, `` `code` ``. Parsed a
 4. You should use `reaction()` for persistence in MobX
 5. You should use in-memory snapshot array with `toJS()` before each mutation for undo
 6. You can find reference docs in `docs/reference/zustand-docs-summary/` and `docs/reference/legend-state-research/`
+7. `@react-hooks-library/core` usage in components is legacy — not a pattern to follow. You should write new hooks in `src/lib/hooks.ts` instead. The library will be fully replaced before v1 ships.
