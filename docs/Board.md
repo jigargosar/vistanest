@@ -14,9 +14,12 @@ Board
 # In Progress
 
 1. v1 roadmap execution — see docs/v1-roadmap.md
+2. Soft delete + trash (roadmap item 4)
 
 # Done
 
+- Checkbox + done UI + hide completed toggle (roadmap item 3)
+- Added new code styling direction to refactoring plan + CLAUDE.md convention 8
 - Styling audit + refactoring plan, tailwind-review.md superseded
 - Scroll-into-view on focused item + flex layout (remove fixed header/footer)
 - Enable persistence + clean test data (roadmap item 1)
