@@ -80,7 +80,7 @@ Two module-level MobX singletons, both using `makeAutoObservable` with `autoBind
 
 ## Theming
 
-All colors via CSS custom properties. Theme store holds 5 presets (midnight, charcoal, slate, paper, phosphor). `applyTheme()` sets variables on `:root`. Layout/typography constants in `global.css`.
+All colors via CSS custom properties. Theme store holds 5 presets (midnight, charcoal, slate, paper, phosphor). `applyTheme()` sets variables on `:root`. Layout/typography constants in `global.css`. See `docs/refactoring-plan-fix-styling-inconsistencies.md` for the plan to migrate inline style vars to Tailwind v4 `@theme inline` tokens.
 
 ## Markdown in items
 
