@@ -2,7 +2,7 @@ import { type ReactNode } from 'react'
 import { observer } from 'mobx-react-lite'
 import { outlineStore } from '../store-mobx/outline-store'
 import { OutlineItem } from './OutlineItem'
-import { scrollIntoViewRef } from '../lib/hooks'
+import { scrollIntoViewRef } from '../lib/utils'
 
 export const OutlineTree = observer(function OutlineTree() {
   const visibleItems = outlineStore.visibleItems

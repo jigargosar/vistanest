@@ -3,7 +3,7 @@ import { observer } from 'mobx-react-lite'
 import { useKeyStroke, useClickOutside } from '@react-hooks-library/core'
 import { outlineStore } from '../store-mobx/outline-store'
 import { themeStore, themes } from '../store-mobx/theme-store'
-import { scrollIntoViewRef } from '../lib/hooks'
+import { scrollIntoViewRef } from '../lib/utils'
 
 interface Command {
   id: string
