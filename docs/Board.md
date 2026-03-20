@@ -18,6 +18,7 @@ Board
 
 # Done
 
+- Scroll-into-view — extracted scrollIntoViewRef callback ref to lib/hooks.ts, applied to OutlineTree + CommandPalette
 - Checkbox + done UI + hide completed toggle (roadmap item 3)
 - Added new code styling direction to refactoring plan + CLAUDE.md convention 8
 - Styling audit + refactoring plan, tailwind-review.md superseded

@@ -3,6 +3,7 @@ import { observer } from 'mobx-react-lite'
 import { useKeyStroke, useClickOutside } from '@react-hooks-library/core'
 import { outlineStore } from '../store-mobx/outline-store'
 import { themeStore, themes } from '../store-mobx/theme-store'
+import { scrollIntoViewRef } from '../lib/hooks'
 
 interface Command {
   id: string
@@ -142,6 +143,7 @@ export const CommandPalette = observer(function CommandPalette() {
           {filteredCommands.map((cmd, index) => (
             <button
               key={cmd.id}
+              ref={index === selectedIndex ? scrollIntoViewRef : undefined}
               className="command-palette-item w-full flex items-center justify-between px-4 border-none cursor-pointer text-left"
               style={{
                 height: 38,
