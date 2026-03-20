@@ -14,7 +14,7 @@ const hints = [
 export const BottomBar = observer(function BottomBar() {
   return (
     <footer
-      className="fixed bottom-0 left-0 right-0 h-9 flex items-center justify-center gap-6 px-6 text-xs z-50"
+      className="shrink-0 h-9 flex items-center justify-center gap-6 px-6 text-xs"
       style={{
         background: 'var(--bg-surface)',
         borderTop: '1px solid var(--border-subtle)',

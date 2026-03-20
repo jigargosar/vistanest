@@ -2,8 +2,6 @@ Board
 
 # Urgent
 
-1. Focused item scrolls out of viewport during J/K navigation — no scrollIntoView
-
 # InBasket
 
 # Ready
@@ -15,6 +13,8 @@ Board
 # In Progress
 
 1. v1 roadmap execution — see docs/v1-roadmap.md
+2. Scroll-into-view on focused item + flex layout (remove fixed header/footer)
+    pending: remove flush from top and bottom.
 
 # Done
 

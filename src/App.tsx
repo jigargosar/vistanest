@@ -10,7 +10,7 @@ export const App = observer(function App() {
   useEffect(() => setupKeyboard(), [])
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg-deep)' }}>
+    <div className="h-screen flex flex-col" style={{ background: 'var(--bg-deep)' }}>
       <TopBar />
       <OutlineTree />
       <BottomBar />
