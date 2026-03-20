@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { observer } from 'mobx-react-lite'
 import { outlineStore } from '../store-mobx/outline-store'
 import { OutlineItem } from './OutlineItem'
@@ -9,6 +9,12 @@ export const OutlineTree = observer(function OutlineTree() {
   const editingId = outlineStore.editingId
   const totalItems = outlineStore.items.length
   const completedItems = outlineStore.completedCount
+
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ block: 'nearest' })
+  }, [focusedId])
 
   return (
     <main
@@ -62,6 +68,7 @@ export const OutlineTree = observer(function OutlineTree() {
           {visibleItems.map((visItem) => (
             <OutlineItem
               key={visItem.item.id}
+              ref={visItem.item.id === focusedId ? scrollRef : undefined}
               item={visItem.item}
               depth={visItem.depth}
               childCount={visItem.childCount}

@@ -6,6 +6,7 @@ import { outlineStore } from '../store-mobx/outline-store'
 import { renderMarkdown } from '../lib/markdown'
 
 interface OutlineItemProps {
+  ref?: React.Ref<HTMLDivElement>
   item: OutlineItemType
   depth: number
   childCount: number
@@ -15,6 +16,7 @@ interface OutlineItemProps {
 }
 
 export const OutlineItem = observer(function OutlineItem({
+  ref,
   item,
   depth,
   childCount,
@@ -59,6 +61,7 @@ export const OutlineItem = observer(function OutlineItem({
 
   return (
     <div
+      ref={ref}
       className={rowClasses}
       onClick={() => outlineStore.setFocused(item.id)}
       onDoubleClick={() => outlineStore.startEditing(item.id)}
