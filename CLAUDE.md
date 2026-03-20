@@ -35,6 +35,8 @@ You should update the roadmap status table and `docs/Board.md` after completing 
 
 You should not refactor existing code unless it directly blocks the current roadmap item.
 
+You must read `docs/journal.md` before starting work and append findings when done. It is a two-way communication log between claude.ai and Claude Code CLI — the other side may have flagged bugs, decisions, or context you need.
+
 # Decision making
 
 You should never scope technical decisions to the current MVP state. This project will grow to Checkvist-level complexity (real-time sync, collaboration, offline-first, multiple lists). You should evaluate libraries, patterns, and architecture against that full vision.
@@ -112,3 +114,26 @@ Item text supports `## headings`, `**bold**`, `*italic*`, `` `code` ``. Parsed a
 6. You can find reference docs in `docs/reference/zustand-docs-summary/` and `docs/reference/legend-state-research/`
 7. `@react-hooks-library/core` usage in components is legacy — not a pattern to follow. You should write new hooks in `src/lib/hooks.ts` instead. The library will be fully replaced before v1 ships.
 8. New code must use Tailwind classes for static values — not inline style. Inline var() is acceptable for theme colors only until @theme inline lands. Do not pattern-match existing code — it predates these rules. See `docs/refactoring-plan-fix-styling-inconsistencies.md` "New Code Direction" section.
+9. You must use `createItem()` from model.ts to create OutlineItems — never inline the fields. One place for defaults prevents bugs when adding new fields.
+10. Pure functions (no store state) belong in model.ts — the store is for state and actions only. Do not mix pure logic into the store.
+11. You must read `docs/Board.md` backlog before modifying store or model code — it captures known issues and approved decisions.
+12. You must not copy patterns from existing store code — existing code predates these rules. Read model.ts and this conventions list before writing new code.
+
+13. No test suite yet — intentional. Track bugs found during UI testing in Board.md backlog with a `[bug]` prefix. When bug count justifies the overhead, add vitest and write regression tests. Every bug that reaches UI testing gets a test when the suite is added.
+
+
+# Manholes (read before touching store or model)
+
+Structural traps in the codebase. Stepping into one produces silent bugs — code compiles, app runs, behavior is wrong. Read this before every store or model change.
+
+1. **allItems vs items.** allItems is the raw array including soft-deleted items. items is a computed that filters deleted out. Use items for reads (finding siblings, counting, iterating). Use allItems for mutations (push, splice). Using allItems for reads leaks deleted items into UI. Using items for writes fails silently — it's a computed, not the source.
+
+2. **New fields on OutlineItem.** Every new field must be added to createItem() in model.ts. TypeScript catches required fields but not optional ones — an optional field without a default silently becomes undefined.
+
+3. **getSiblings operates on whatever array you pass it.** If you pass allItems, deleted siblings appear. Every call site must pass this.items.
+
+4. **Undo restores allItems only.** pushUndo snapshots allItems via toJS(). Any new state outside allItems (separate arrays, view modes, selection sets) won't be restored by undo unless explicitly added to the snapshot.
+
+5. **visibleItems rebuilds the full tree on every access.** It's a MobX computed but calls buildVisibleItems which does a full walk. Cache in a local variable if you access it more than once in an action.
+
+6. **Persistence serializes allItems as JSON on every change.** Adding non-serializable data (functions, circular refs, large blobs) to OutlineItem will break persistence silently. Keep items flat and serializable.

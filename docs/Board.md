@@ -18,6 +18,10 @@ Board
 
 # Done
 
+- Added manholes section to CLAUDE.md
+- Added conventions 9-13 (createItem factory, pure functions in model, backlog check, no pattern-match, test strategy)
+- Updated checkvist-research/checkbox-done-ui.md with v1 scope decisions
+- Created ship-it skill
 - Scroll-into-view — extracted scrollIntoViewRef callback ref to lib/hooks.ts, applied to OutlineTree + CommandPalette
 - Checkbox + done UI + hide completed toggle (roadmap item 3)
 - Added new code styling direction to refactoring plan + CLAUDE.md convention 8
@@ -46,3 +50,6 @@ Board
 10. List header scrolls away — move it outside the scroll container (Checkvist keeps header above, only items scroll)
 11. Move keyboard.ts out of lib/ — business logic, not a utility
 12. Replace @react-hooks-library/core with custom hooks in src/lib/hooks.ts — unmaintained, stale handler bug masked by accidental re-registration
+13. [manhole] allItems vs items — consider two-array split (items + trash) to eliminate wrong-array ambiguity
+14. [manhole] getSiblings accepts any array — needs guardrail or dedicated active-items-only helper
+15. Add vitest + regression tests when [bug] count in backlog justifies it

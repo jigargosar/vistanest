@@ -3,6 +3,7 @@ import { starterItems } from '../data/sample-items'
 import {
   buildFilteredVisibleItems,
   buildVisibleItems,
+  createItem,
   getDescendantIds,
   getSiblings,
   sortKeyAfterLast,
@@ -19,7 +20,12 @@ function loadItems(): OutlineItem[] {
     const json = localStorage.getItem(STORAGE_KEY)
     if (json) {
       const parsed = JSON.parse(json)
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((i: OutlineItem) => ({
+          ...i,
+          deletedAt: i.deletedAt ?? null,
+        }))
+      }
     }
   } catch {
     // corrupt data, fall through to defaults
@@ -35,12 +41,16 @@ const undoStack: OutlineItem[][] = []
 // === Store ===
 
 export const outlineStore = makeAutoObservable({
-  items: loadItems() as OutlineItem[],
+  allItems: loadItems() as OutlineItem[],
   focusedId: null as string | null,
   editingId: null as string | null,
   filterQuery: '',
   commandPaletteOpen: false,
   hideCompleted: false,
+
+  get items(): OutlineItem[] {
+    return this.allItems.filter((i) => i.deletedAt === null)
+  },
 
   get visibleItems(): VisibleItem[] {
     const items = this.hideCompleted
@@ -58,14 +68,14 @@ export const outlineStore = makeAutoObservable({
   },
 
   pushUndo() {
-    undoStack.push(toJS(this.items))
+    undoStack.push(toJS(this.allItems))
     if (undoStack.length > MAX_UNDO) undoStack.shift()
   },
 
   undo() {
     const prev = undoStack.pop()
     if (prev) {
-      this.items = prev
+      this.allItems = prev
       this.editingId = null
     }
   },
@@ -140,14 +150,12 @@ export const outlineStore = makeAutoObservable({
     const before = siblings[idx + 1]?.sortKey ?? null
 
     const newId = crypto.randomUUID()
-    this.items.push({
+    this.allItems.push(createItem({
       id: newId,
       parentId: current.parentId,
       sortKey: sortKeyBetween(after, before),
       text: '',
-      collapsed: false,
-      done: false,
-    })
+    }))
     this.focusedId = newId
     this.editingId = newId
   },
@@ -164,14 +172,12 @@ export const outlineStore = makeAutoObservable({
     const newId = crypto.randomUUID()
 
     parent.collapsed = false
-    this.items.push({
+    this.allItems.push(createItem({
       id: newId,
       parentId: targetId,
       sortKey: sortKeyAfterLast(children),
       text: '',
-      collapsed: false,
-      done: false,
-    })
+    }))
     this.focusedId = newId
     this.editingId = newId
   },
@@ -190,7 +196,10 @@ export const outlineStore = makeAutoObservable({
     this.focusedId = prev ? prev.item.id : null
 
     const idsToDelete = new Set([targetId, ...getDescendantIds(this.items, targetId)])
-    this.items = this.items.filter((i) => !idsToDelete.has(i.id))
+    const now = Date.now()
+    for (const item of this.allItems) {
+      if (idsToDelete.has(item.id)) item.deletedAt = now
+    }
   },
 
   indentItem(id?: string) {
@@ -259,6 +268,6 @@ export const outlineStore = makeAutoObservable({
 
 // Auto-persist items on change
 reaction(
-  () => JSON.stringify(outlineStore.items),
+  () => JSON.stringify(outlineStore.allItems),
   (json) => localStorage.setItem(STORAGE_KEY, json),
 )

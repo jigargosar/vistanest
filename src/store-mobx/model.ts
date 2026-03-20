@@ -9,6 +9,7 @@ export interface OutlineItem {
   text: string
   collapsed: boolean
   done: boolean
+  deletedAt: number | null
   note?: string
   tags?: ReadonlyArray<{ label: string; type: 'priority' | 'progress' | 'due' | 'label' }>
 }
@@ -125,6 +126,17 @@ export function buildFilteredVisibleItems(items: OutlineItem[], query: string): 
 
   walk(null, 0)
   return result
+}
+
+export function createItem(
+  fields: Pick<OutlineItem, 'id' | 'parentId' | 'sortKey' | 'text'> & Partial<Omit<OutlineItem, 'id' | 'parentId' | 'sortKey' | 'text'>>,
+): OutlineItem {
+  return {
+    collapsed: false,
+    done: false,
+    deletedAt: null,
+    ...fields,
+  }
 }
 
 export function sortKeyBetween(before: string | null, after: string | null): string {
