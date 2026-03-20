@@ -2,7 +2,7 @@
 
 ## Principles
 
-These two rules govern all styling decisions. Specific findings may shift as code evolves, but these principles remain the bar.
+These two rules govern all styling decisions. Specific findings go stale as code changes — these principles are the durable bar.
 
 ### 1. Static values in classes, dynamic values in inline style
 
@@ -14,9 +14,66 @@ This single rule prevents:
 - Overriding a CSS class with inline style for the same static value
 - Using multiple formats for static sizing (Tailwind class vs inline px vs bracket notation)
 
+**Bad** — static color and font size in inline style:
+```tsx
+<span style={{ fontSize: 16, color: 'var(--text-primary)' }}>
+```
+
+**Good** — static values in Tailwind classes:
+```tsx
+<span className="text-[16px] text-primary">
+```
+
+**Bad** — re-declaring inherited font-family:
+```tsx
+<input style={{ fontFamily: 'var(--font-body)', color: 'var(--text-primary)' }} />
+```
+
+**Good** — body already sets font-family, only non-inherited values need classes:
+```tsx
+<input className="text-primary" />
+```
+
+**Bad** — overriding a CSS class with inline style for the same property:
+```tsx
+// global.css: kbd { height: 20px; min-width: 20px }
+<kbd style={{ height: 18, minWidth: 18 }}>
+```
+
+**Good** — use a variant class:
+```tsx
+<kbd className="kbd-compact">
+```
+
+**Legitimate inline** — value computed at runtime:
+```tsx
+<div style={{ paddingLeft: depth * 28 + 8 }}>
+```
+
+**Bad** — hover-only CSS class that could be a Tailwind variant:
+```css
+.chevron-toggle { background: none; color: var(--text-tertiary) }
+.chevron-toggle:hover { color: var(--text-secondary); background: var(--bg-raised) }
+```
+
+**Good** — Tailwind hover variants (no class toggling needed):
+```tsx
+<button className="bg-transparent text-tertiary hover:text-secondary hover:bg-raised">
+```
+
 ### 2. All colors through theme CSS variables
 
 No hardcoded color values that bypass the theme system. Every color that appears in the UI must trace back to a CSS variable set by the theme store. Hardcoded rgba/hex values won't adapt on theme switch.
+
+**Bad** — hardcoded rgba that won't follow theme:
+```tsx
+style={{ background: 'rgba(192, 84, 79, 0.12)', color: 'var(--red-soft)' }}
+```
+
+**Good** — both background and text through theme vars:
+```tsx
+className="bg-red-soft/10 text-red-soft"
+```
 
 ## Solution: @theme inline
 
@@ -25,9 +82,9 @@ Tailwind v4's `@theme inline` directive maps runtime CSS variables to Tailwind c
 The naming strips the category prefix from the CSS variable to avoid stutter with Tailwind's utility prefix:
 
 ```
-var(--bg-deep)       → --color-deep       → bg-deep
-var(--text-primary)  → --color-primary    → text-primary
-var(--border-subtle) → --color-subtle     → border-subtle
+var(--bg-deep)       -> --color-deep       -> bg-deep
+var(--text-primary)  -> --color-primary    -> text-primary
+var(--border-subtle) -> --color-subtle     -> border-subtle
 ```
 
 ### Proposed @theme block (for global.css)
@@ -72,53 +129,6 @@ Font tokens enable `font-body` and `font-mono` classes. Spacing tokens enable `m
 
 Do not use `text-base` for `fontSize: 16`. Tailwind's `text-base` also sets `line-height: 1.5rem`, which clobbers the explicit `lineHeight: 1.75` used on outline items. Use `text-[16px]` instead.
 
-## Specific Tracks
-
-Current findings snapshot. Line numbers may drift as code changes — use principles above to guide decisions.
-
-### Track 1: @theme inline migration
-
-29 inline color/background/border styles convert directly to Tailwind classes. 4 conditional styles convert to className ternaries. 8 dynamic/computed values stay as inline style legitimately.
-
-### Track 2: Font size unification
-
-Font sizes set 4 different ways across 16 locations: Tailwind brackets (`text-[13px]`), Tailwind named (`text-xs`), inline style numbers (`fontSize: 16`), CSS classes (`font-size: 26px`). Per principle 1, static sizes belong in classes.
-
-### Track 3: kbd variant approach
-
-`global.css` defines `kbd` base styles. Two locations override inline with slightly different values (height 18 vs 20, padding 4px vs 5px). Per principle 1, use a CSS variant class instead of inline overrides.
-
-### Track 4: Transition removal
-
-6 interactive elements have `transition-colors` or `transition-transform`, violating CLAUDE.md convention ("no CSS transitions on interactive elements"). Remove all.
-
-### Track 5: Icon deduplication
-
-SearchIcon defined in both TopBar.tsx and CommandPalette.tsx (same SVG, different API). Settings gear SVG duplicated in TopBar.tsx and OutlineTree.tsx. Extract shared icons to a single location.
-
-### Track 6: OutlineTree offset investigation
-
-`OutlineTree` has `marginTop: var(--topbar-h)` plus `paddingTop: 40`, but TopBar is a flex child with `shrink-0` (not fixed/absolute). The margin may be leftover from when TopBar was fixed. Investigate whether 92px of dead space above content is intentional.
-
-### Track 7: Redundant override deletion
-
-4 locations re-declare `fontFamily: 'var(--font-body)'` which is already inherited from body. Delete.
-
-### Track 8: global.css class cleanup
-
-7 custom CSS classes in `global.css`. 3 use class-toggling patterns (`.is-focused`, `.is-active`) and should stay as CSS classes. 4 can migrate to Tailwind:
-
-**Keep in CSS** (class toggling with JS):
-1. `.outline-item-row` / `.is-focused` — focus state + box-shadow
-2. `.topbar-btn` / `.is-active` — hover + active state
-3. `.theme-option` / `.is-active` — hover + active state
-
-**Can move to Tailwind:**
-1. `.chevron-toggle` — hover only, no class toggling. Replace with `hover:text-secondary hover:bg-raised`.
-2. `.command-palette-item` — hover only, no class toggling. Replace with `hover:bg-hover`.
-3. `.md-h1` / `.md-h2` / `.md-h3` — static typography (font-size, font-weight, letter-spacing, line-height). No CSS vars, no state. All values map to Tailwind utilities.
-4. `.md-code` — static + CSS vars for bg/border. Can move to Tailwind after @theme inline registration.
-
 ## Open Questions
 
 ### Q1: accent-border naming
@@ -140,3 +150,9 @@ InlineTag uses 8 hardcoded rgba values for tag backgrounds and borders. These do
 ### Q5: Non-color inline styles
 
 After @theme migration, ~20 inline styles remain for fontSize, height, width, padding, etc. These are static values that per principle 1 should be Tailwind classes. Tackle in this refactor, or separate pass?
+
+## Audit Instruction
+
+To regenerate fresh per-file findings, run this prompt against the codebase:
+
+> In src check all styles and classes, and the css file. Review against the two principles in docs/refactoring-plan-fix-styling-inconsistencies.md. For each file, report every violation with the current code and what it should be. Include global.css classes that can move to Tailwind (hover-only, no class toggling) vs those that must stay (class toggling with JS).

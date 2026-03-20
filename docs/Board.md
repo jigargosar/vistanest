@@ -6,9 +6,10 @@ Board
 
 # Ready
 
-1. Verify rendering fix — measure React render time after spread-props fix
-2. Create docs/mobx-rules.md — document MobX observability rules
-3. Audit MobX observability — moveFocus() and deleteItem() wrapper pattern
+1. Fix styling inconsistencies — see docs/refactoring-plan-fix-styling-inconsistencies.md
+2. Verify rendering fix — measure React render time after spread-props fix
+3. Create docs/mobx-rules.md — document MobX observability rules
+4. Audit MobX observability — moveFocus() and deleteItem() wrapper pattern
 
 # In Progress
 
@@ -16,6 +17,7 @@ Board
 
 # Done
 
+- Styling audit + refactoring plan, tailwind-review.md superseded
 - Scroll-into-view on focused item + flex layout (remove fixed header/footer)
 - Enable persistence + clean test data (roadmap item 1)
 - Capture perf notes to bench/perf-notes.md, clean timing logs from code
@@ -29,8 +31,7 @@ Board
 
 # Backlog
 
-1. Icon component consolidation
-2. CommandPalette repeated if (id) guard extraction
+1. CommandPalette repeated if (id) guard extraction
 3. OutlineItem 9 hooks/callbacks wall
 4. Extract domain types to shared model file
 5. Extract model helpers as pure functions
