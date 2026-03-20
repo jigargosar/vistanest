@@ -15,17 +15,7 @@ import type { OutlineItem, VisibleItem } from './model'
 const STORAGE_KEY = 'vistanest-items-mobx'
 
 function loadItems(): OutlineItem[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw) {
-      const parsed: unknown = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed as OutlineItem[]
-      }
-    }
-  } catch {
-    // Fall through
-  }
+  localStorage.removeItem(STORAGE_KEY)
   return sampleItems
 }
 

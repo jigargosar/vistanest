@@ -42,12 +42,20 @@ export function getDescendantIds(items: OutlineItem[], rootId: string): string[]
   return ids
 }
 
-export function getAncestorIds(items: OutlineItem[], itemId: string): Set<string> {
+export function buildItemByIdMap(items: OutlineItem[]): Map<string, OutlineItem> {
+  const map = new Map<string, OutlineItem>()
+  for (const item of items) {
+    map.set(item.id, item)
+  }
+  return map
+}
+
+export function getAncestorIds(itemMap: Map<string, OutlineItem>, itemId: string): Set<string> {
   const ancestors = new Set<string>()
-  let current = items.find((i) => i.id === itemId)
+  let current = itemMap.get(itemId)
   while (current?.parentId) {
     ancestors.add(current.parentId)
-    current = items.find((i) => i.id === current!.parentId)
+    current = itemMap.get(current.parentId)
   }
   return ancestors
 }
@@ -85,6 +93,7 @@ export function buildVisibleItems(items: OutlineItem[]): VisibleItem[] {
 }
 
 export function buildFilteredVisibleItems(items: OutlineItem[], query: string): VisibleItem[] {
+  const t0 = performance.now()
   const lowerQuery = query.toLowerCase()
 
   const matchingIds = new Set<string>()
@@ -93,15 +102,20 @@ export function buildFilteredVisibleItems(items: OutlineItem[], query: string): 
       matchingIds.add(item.id)
     }
   }
+  const t1 = performance.now()
 
+  const itemMap = buildItemByIdMap(items)
   const visibleIds = new Set(matchingIds)
   for (const id of matchingIds) {
-    for (const ancestorId of getAncestorIds(items, id)) {
+    for (const ancestorId of getAncestorIds(itemMap, id)) {
       visibleIds.add(ancestorId)
     }
   }
+  const t2 = performance.now()
 
   const childrenMap = buildSortedChildrenByParentMap(items.filter((i) => visibleIds.has(i.id)))
+  const t3 = performance.now()
+
   const result: VisibleItem[] = []
 
   function walk(parentId: string | null, depth: number) {
@@ -114,6 +128,17 @@ export function buildFilteredVisibleItems(items: OutlineItem[], query: string): 
   }
 
   walk(null, 0)
+  const t4 = performance.now()
+
+  console.log(
+    'filter q="' + query + '" M=' + matchingIds.size +
+    ' | match:' + (t1 - t0).toFixed(1) +
+    ' ancestors:' + (t2 - t1).toFixed(1) +
+    ' childrenMap:' + (t3 - t2).toFixed(1) +
+    ' walk:' + (t4 - t3).toFixed(1) +
+    ' total:' + (t4 - t0).toFixed(1) + 'ms'
+  )
+
   return result
 }
 

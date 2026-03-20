@@ -1,22 +1,27 @@
 import { useEffect, useRef, useState, useMemo, type CSSProperties } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useKeyStroke } from '@react-hooks-library/core'
-import type { VisibleItem } from '../store-mobx/model'
+import type { OutlineItem as OutlineItemType } from '../store-mobx/model'
 import { outlineStore } from '../store-mobx/outline-store'
 import { renderMarkdown } from '../lib/markdown'
 
 interface OutlineItemProps {
-  visibleItem: VisibleItem
+  item: OutlineItemType
+  depth: number
+  childCount: number
+  hasChildren: boolean
   isFocused: boolean
   isEditing: boolean
 }
 
 export const OutlineItem = observer(function OutlineItem({
-  visibleItem,
+  item,
+  depth,
+  childCount,
+  hasChildren,
   isFocused,
   isEditing,
 }: OutlineItemProps) {
-  const { item, depth, childCount, hasChildren } = visibleItem
 
   const inputRef = useRef<HTMLInputElement>(null)
   const [editText, setEditText] = useState(item.text)

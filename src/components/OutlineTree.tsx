@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Profiler, type ReactNode } from 'react'
 import { observer } from 'mobx-react-lite'
 import { outlineStore } from '../store-mobx/outline-store'
 import { OutlineItem } from './OutlineItem'
@@ -58,16 +58,23 @@ export const OutlineTree = observer(function OutlineTree() {
         </div>
 
         {/* Outline items */}
+        <Profiler id="OutlineItems" onRender={(_id, _phase, actualDuration) => {
+          console.log('React render: ' + actualDuration.toFixed(1) + 'ms')
+        }}>
         <div className="flex flex-col gap-px">
           {visibleItems.map((visItem) => (
             <OutlineItem
               key={visItem.item.id}
-              visibleItem={visItem}
+              item={visItem.item}
+              depth={visItem.depth}
+              childCount={visItem.childCount}
+              hasChildren={visItem.hasChildren}
               isFocused={visItem.item.id === focusedId}
               isEditing={visItem.item.id === editingId}
             />
           ))}
         </div>
+        </Profiler>
       </div>
     </main>
   )

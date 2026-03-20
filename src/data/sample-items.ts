@@ -1,33 +1,34 @@
+import { generateKeyBetween } from 'fractional-indexing'
 import type { OutlineItem } from '../store-mobx/model'
 
-export const sampleItems: OutlineItem[] = [
-  { id: '1', parentId: null, sortKey: 'a0', text: '## Authentication & User Management', collapsed: false, done: false, tags: [{ label: '!1', type: 'priority' }, { label: 'in progress', type: 'progress' }] },
-  { id: '2', parentId: null, sortKey: 'a1', text: '## Core Editor Experience', collapsed: false, done: false, tags: [{ label: '!1', type: 'priority' }] },
-  { id: '3', parentId: null, sortKey: 'a2', text: '## Search & Filtering', collapsed: true, done: false },
-  { id: '4', parentId: null, sortKey: 'a3', text: '## Data & Sync', collapsed: false, done: false, tags: [{ label: '!2', type: 'priority' }] },
-  { id: '5', parentId: null, sortKey: 'a4', text: '## Polish & Launch Prep', collapsed: false, done: false },
-  { id: '1-1', parentId: '1', sortKey: 'a0', text: 'OAuth2 integration with Google & GitHub', collapsed: false, done: true },
-  { id: '1-2', parentId: '1', sortKey: 'a1', text: 'Session management and token refresh', collapsed: false, done: true },
-  { id: '1-3', parentId: '1', sortKey: 'a2', text: '**Role-based access control**', collapsed: false, done: false, tags: [{ label: 'backend', type: 'label' }] },
-  { id: '1-4', parentId: '1', sortKey: 'a3', text: 'Password reset flow', collapsed: false, done: false, note: 'blocked on email service' },
-  { id: '1-3-1', parentId: '1-3', sortKey: 'a0', text: 'Define permission matrix for admin, editor, viewer', collapsed: false, done: false },
-  { id: '1-3-2', parentId: '1-3', sortKey: 'a1', text: 'Middleware guards for API routes', collapsed: false, done: false },
-  { id: '1-3-3', parentId: '1-3', sortKey: 'a2', text: 'UI permission checks in components', collapsed: false, done: false },
-  { id: '2-1', parentId: '2', sortKey: 'a0', text: '**Keyboard navigation system**', collapsed: false, done: false, tags: [{ label: 'in progress', type: 'progress' }] },
-  { id: '2-2', parentId: '2', sortKey: 'a1', text: 'Inline editing with markdown support', collapsed: false, done: false },
-  { id: '2-3', parentId: '2', sortKey: 'a2', text: 'Drag-and-drop reordering', collapsed: false, done: false, tags: [{ label: 'Mar 20', type: 'due' }] },
-  { id: '2-4', parentId: '2', sortKey: 'a3', text: 'Multi-select with Shift+Click', collapsed: false, done: false },
-  { id: '2-1-1', parentId: '2-1', sortKey: 'a0', text: 'J/K movement between siblings', collapsed: false, done: true },
-  { id: '2-1-2', parentId: '2-1', sortKey: 'a1', text: 'Tab/Shift+Tab for indent/outdent', collapsed: false, done: false },
-  { id: '2-1-3', parentId: '2-1', sortKey: 'a2', text: 'Ctrl+Up/Down to move items', collapsed: false, done: false },
-  { id: '3-1', parentId: '3', sortKey: 'a0', text: 'Full-text search across all lists', collapsed: false, done: false },
-  { id: '3-2', parentId: '3', sortKey: 'a1', text: 'Tag-based filtering', collapsed: false, done: false },
-  { id: '3-3', parentId: '3', sortKey: 'a2', text: 'Saved search queries', collapsed: false, done: false },
-  { id: '4-1', parentId: '4', sortKey: 'a0', text: 'Real-time collaboration via WebSocket', collapsed: false, done: false, tags: [{ label: 'Apr 1', type: 'due' }] },
-  { id: '4-2', parentId: '4', sortKey: 'a1', text: 'Offline mode with service worker', collapsed: false, done: false },
-  { id: '4-3', parentId: '4', sortKey: 'a2', text: 'Import from Checkvist, WorkFlowy, OPML', collapsed: false, done: true },
-  { id: '4-4', parentId: '4', sortKey: 'a3', text: 'Export to Markdown, JSON, OPML', collapsed: false, done: true },
-  { id: '5-1', parentId: '5', sortKey: 'a0', text: 'Onboarding tutorial overlay', collapsed: false, done: false },
-  { id: '5-2', parentId: '5', sortKey: 'a1', text: 'Keyboard shortcut cheat sheet modal', collapsed: false, done: true },
-  { id: '5-3', parentId: '5', sortKey: 'a2', text: 'Performance audit \u2014 target <100ms interactions', collapsed: false, done: false, tags: [{ label: 'perf', type: 'label' }] },
-]
+function makeTree(n: number, maxDepth: number): OutlineItem[] {
+  const items: OutlineItem[] = []
+  const parentStack: { id: string; depth: number; childKey: string | null }[] = []
+
+  for (let i = 0; i < n; i++) {
+    const depth = i % maxDepth
+    // trim stack to current depth
+    while (parentStack.length > depth) {
+      parentStack.pop()
+    }
+    const parentId = parentStack.length > 0 ? parentStack[parentStack.length - 1].id : null
+    const parent = parentStack.length > 0 ? parentStack[parentStack.length - 1] : null
+    const sortKey = generateKeyBetween(parent?.childKey ?? null, null)
+    if (parent) {
+      parent.childKey = sortKey
+    }
+    const id = 'item-' + i
+    items.push({
+      id,
+      parentId,
+      sortKey,
+      text: 'test item ' + i,
+      collapsed: false,
+      done: false,
+    })
+    parentStack.push({ id, depth, childKey: null })
+  }
+  return items
+}
+
+export const sampleItems: OutlineItem[] = makeTree(2000, 1)
