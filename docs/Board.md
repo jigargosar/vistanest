@@ -39,3 +39,4 @@ Board
 7. Remove useMemo(renderMarkdown) if unnecessary
 8. Investigate toJS() in pushUndo
 9. getSiblings O(N) pattern — defer unless perf issue
+10. List header scrolls away — move it outside the scroll container (Checkvist keeps header above, only items scroll)

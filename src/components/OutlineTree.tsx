@@ -18,8 +18,7 @@ export const OutlineTree = observer(function OutlineTree() {
 
   return (
     <main
-      className="flex-1 overflow-y-auto"
-      style={{ paddingTop: 40 }}
+      className="flex-1 overflow-y-auto scroll-p-4 pt-10 pb-30"
     >
       <div className="mx-auto px-8" style={{ maxWidth: 'calc(var(--content-width) + 64px)' }}>
         {/* List header */}
