@@ -23,6 +23,18 @@ VistaNest v1 is shipped when:
 
 See docs/v1-roadmap.md for sequencing.
 
+# v1 Feature Work
+
+You should only work on the next "Not started" item in the v1 roadmap status table (`docs/v1-roadmap.md`). Do not skip ahead. Do not work on multiple items at once.
+
+Each feature has a research file in `checkvist-research/` with v1 scope decisions at the top. You must read it before implementing. The v1 scope decisions override Checkvist's full behavior — if the research says "deferred to v2", you must not build it. Build only what the v1 scope section says to build.
+
+You should follow convention 8 for all new code styling.
+
+You should update the roadmap status table and `docs/Board.md` after completing each item.
+
+You should not refactor existing code unless it directly blocks the current roadmap item.
+
 # Decision making
 
 You should never scope technical decisions to the current MVP state. This project will grow to Checkvist-level complexity (real-time sync, collaboration, offline-first, multiple lists). You should evaluate libraries, patterns, and architecture against that full vision.
@@ -99,5 +111,4 @@ Item text supports `## headings`, `**bold**`, `*italic*`, `` `code` ``. Parsed a
 5. You should use in-memory snapshot array with `toJS()` before each mutation for undo
 6. You can find reference docs in `docs/reference/zustand-docs-summary/` and `docs/reference/legend-state-research/`
 7. `@react-hooks-library/core` usage in components is legacy — not a pattern to follow. You should write new hooks in `src/lib/hooks.ts` instead. The library will be fully replaced before v1 ships.
-
 8. New code must use Tailwind classes for static values — not inline style. Inline var() is acceptable for theme colors only until @theme inline lands. Do not pattern-match existing code — it predates these rules. See `docs/refactoring-plan-fix-styling-inconsistencies.md` "New Code Direction" section.
