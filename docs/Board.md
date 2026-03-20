@@ -41,3 +41,4 @@ Board
 9. getSiblings O(N) pattern — defer unless perf issue
 10. List header scrolls away — move it outside the scroll container (Checkvist keeps header above, only items scroll)
 11. Move keyboard.ts out of lib/ — business logic, not a utility
+12. Replace @react-hooks-library/core with custom hooks in src/lib/hooks.ts — unmaintained, stale handler bug masked by accidental re-registration

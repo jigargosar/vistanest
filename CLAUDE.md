@@ -47,7 +47,7 @@ pnpm test:e2e -- --grep "smoke"  # Run a single test by name
 3. State: MobX (`src/store-mobx/`) — `makeAutoObservable` on plain objects (not classes)
 4. `fractional-indexing` for item ordering (`sortKey: string`)
 5. `@tanstack/hotkeys` for keyboard shortcuts, wrapped by `src/lib/hotkey.ts`
-6. `@react-hooks-library/core` for `useEventListener` and other hooks
+6. `@react-hooks-library/core` — being phased out (unmaintained, stale handler bug in useEventListener). You should not add new usages. Replacements go in `src/lib/hooks.ts`. Existing usages work due to accidental mitigation — do not flag them.
 7. CSS variables for theming — themes are JS objects that apply to `:root`
 8. Playwright for e2e tests with visual snapshot regression (HTTPS, chromium-only)
 
