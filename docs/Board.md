@@ -13,20 +13,19 @@ Board
 # In Progress
 
 1. v1 roadmap execution — see docs/v1-roadmap.md
-2. Scroll-into-view on focused item + flex layout (remove fixed header/footer)
-    pending: remove flush from top and bottom.
 
 # Done
 
-1. Enable persistence + clean test data (roadmap item 1)
-2. Capture perf notes to bench/perf-notes.md, clean timing logs from code
-3. ThemeSwitcher — merged two useEffects into one
-2. Removed vitest, puppeteer, and zustand devDependencies
-3. Fix getAncestorIds O(N) lookup — items.find() → Map.get(), 145ms → 0.7ms
-4. Fix OutlineItem props — pass observable item directly
-5. Created v1-roadmap.md
-6. Created blind-spots skill
-7. Updated global CLAUDE.md with developer profile
+- Scroll-into-view on focused item + flex layout (remove fixed header/footer)
+- Enable persistence + clean test data (roadmap item 1)
+- Capture perf notes to bench/perf-notes.md, clean timing logs from code
+- ThemeSwitcher — merged two useEffects into one
+- Removed vitest, puppeteer, and zustand devDependencies
+- Fix getAncestorIds O(N) lookup — items.find() → Map.get(), 145ms → 0.7ms
+- Fix OutlineItem props — pass observable item directly
+- Created v1-roadmap.md
+- Created blind-spots skill
+- Updated global CLAUDE.md with developer profile
 
 # Backlog
 
@@ -40,3 +39,4 @@ Board
 8. Investigate toJS() in pushUndo
 9. getSiblings O(N) pattern — defer unless perf issue
 10. List header scrolls away — move it outside the scroll container (Checkvist keeps header above, only items scroll)
+11. Move keyboard.ts out of lib/ — business logic, not a utility
