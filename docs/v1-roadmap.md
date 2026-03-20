@@ -13,7 +13,7 @@ Scope cut: No due dates, assignees, collaboration, real-time sync, offline-first
 
 ## Phase 2 — Core Features
 
-3. **Checkbox + done UI** — visible checkbox on each item row, wired to existing `toggleDone` action, visual done state (strikethrough already exists, add the checkbox)
+3. **Checkbox + done UI** — more complex than it looks. Checkvist has 3 states (open/closed/invalidated), parent-child cascade logic, and parents don't show checkboxes. Current model has `done: boolean` which may need to become a status enum. See `checkvist-research/checkbox-done-ui.md` for full research. v1 scope decisions needed before implementation.
 4. **Soft delete + trash** — add `deletedAt: number | null` to `OutlineItem`, filter deleted items from active view, trash view to browse deleted items, restore action, "empty trash" for permanent delete
 5. **Archive** — add `archivedAt: number | null` to `OutlineItem`, archive action for done items, archive view, bulk "archive all done" command
 6. **Notes panel** — expand/collapse note area on focused item, inline edit, keyboard shortcut to toggle
@@ -36,7 +36,7 @@ Scope cut: No due dates, assignees, collaboration, real-time sync, offline-first
 |---|------|--------|
 | 1 | Enable persistence + clean test data | Done |
 | 2 | Fix library fragility | Parked — replace incrementally, finish before v1 ship |
-| 3 | Checkbox + done UI | Not started |
+| 3 | Checkbox + done UI | Parked — needs v1 scope decisions, see docs/checkvist-checkbox-behaviour.md |
 | 4 | Soft delete + trash | Not started |
 | 5 | Archive | Not started |
 | 6 | Notes panel | Not started |
