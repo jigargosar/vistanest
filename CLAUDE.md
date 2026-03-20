@@ -6,6 +6,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Checkvist clone with full feature parity — keyboard-first hierarchical outliner with collaboration, sync, tags, due dates, assignees, and more. See `docs/reference/checkvist/` for saved source and screenshots.
 
+# Release Definition
+
+VistaNest v1 is shipped when:
+- Persistence works (data survives reload)
+- Library fragility from review3.1 is resolved
+- Checkbox + done state is visible in UI
+- Soft delete with trash view works
+- Archive for done items works
+- Notes panel exists
+- Multiple lists with switcher works
+- Tags can be added/removed with existing UI
+- JSON import/export works
+- README exists with screenshots
+- Deployed and accessible via URL
+
+See docs/v1-roadmap.md for sequencing.
+
 # Decision making
 
 You should never scope technical decisions to the current MVP state. This project will grow to Checkvist-level complexity (real-time sync, collaboration, offline-first, multiple lists). You should evaluate libraries, patterns, and architecture against that full vision.
@@ -68,6 +85,10 @@ All colors via CSS custom properties. Theme store holds 5 presets (midnight, cha
 ## Markdown in items
 
 Item text supports `## headings`, `**bold**`, `*italic*`, `` `code` ``. Parsed at render time via `src/lib/markdown.tsx`. Users type markdown — visual hierarchy comes from content, not depth.
+
+## Benchmarks & perf notes
+
+`bench/` — perf benchmarks and findings log. `bench/bench-filter.ts` benchmarks ancestor lookup strategies. `bench/perf-notes.md` captures raw timing data, conclusions, and known perf characteristics (render cost, DOM listener churn, etc.). Consult before adding console.log timing to production code — the finding may already be documented. To perf test with large data: change `loadItems()` to return `makeTree(N, depth)` from `src/data/sample-items.ts`. Revert before committing.
 
 # Key conventions
 
