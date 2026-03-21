@@ -28,6 +28,3 @@ docs/reference/checkvist/
 # Playwright
 test-results/
 playwright-report/
-
-# Local communication between AI sessions
-docs/journal.md

@@ -202,6 +202,16 @@ export const outlineStore = makeAutoObservable({
     }
   },
 
+  restoreLastDeleted() {
+    const deleted = this.allItems.filter((i) => i.deletedAt !== null)
+    if (deleted.length === 0) return
+    const lastTimestamp = Math.max(...deleted.map((i) => i.deletedAt!))
+    this.pushUndo()
+    for (const item of this.allItems) {
+      if (item.deletedAt === lastTimestamp) item.deletedAt = null
+    }
+  },
+
   indentItem(id?: string) {
     const targetId = id ?? this.focusedId
     if (!targetId) return

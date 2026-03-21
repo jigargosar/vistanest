@@ -35,8 +35,6 @@ You should update the roadmap status table and `docs/Board.md` after completing 
 
 You should not refactor existing code unless it directly blocks the current roadmap item.
 
-You must read `docs/journal.md` before starting work and append findings when done. It is a two-way communication log between claude.ai and Claude Code CLI — the other side may have flagged bugs, decisions, or context you need.
-
 # Decision making
 
 You should never scope technical decisions to the current MVP state. This project will grow to Checkvist-level complexity (real-time sync, collaboration, offline-first, multiple lists). You should evaluate libraries, patterns, and architecture against that full vision.
