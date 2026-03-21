@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 # Goal
 
-Checkvist clone with full feature parity — keyboard-first hierarchical outliner with collaboration, sync, tags, due dates, assignees, and more. See `docs/reference/checkvist/` for saved source and screenshots.
+Checkvist clone with full feature parity — keyboard-first hierarchical outliner with collaboration, sync, tags, due dates, assignees, and more. See `docs/reference/checkvist-source/` for saved source and screenshots.
 
 # Release Definition
 
@@ -26,8 +26,6 @@ See docs/v1-roadmap.md for sequencing.
 # v1 Feature Work
 
 You should only work on the next "Not started" item in the v1 roadmap status table (`docs/v1-roadmap.md`). Do not skip ahead. Do not work on multiple items at once.
-
-Each feature has a research file in `checkvist-research/` with v1 scope decisions at the top. You must read it before implementing. The v1 scope decisions override Checkvist's full behavior — if the research says "deferred to v2", you must not build it. Build only what the v1 scope section says to build.
 
 You should follow convention 8 for all new code styling.
 
