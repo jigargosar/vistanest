@@ -34,12 +34,11 @@ Sources: checkvist.com/help, blog.checkvist.com, discuss.checkvist.com, Workflow
 
 ## VistaNest v1 Scope Decisions
 
-1. `rd` sequence opens modal — match Checkvist
-2. Show all soft-deleted items — no time window (localStorage, no storage pressure)
-3. Flat list sorted by deletedAt descending (most recent first)
-4. Checkboxes for selection (simpler than Checkvist's selection model for v1)
-5. "Restore selected" button
-6. Restore to original parent if exists, else top of list
-7. Restoring a parent restores all children (same deletedAt timestamp)
+1. `rd` sequence opens modal dialog
+2. Show all soft-deleted items in tree structure (nested under parents)
+3. Click a single item to restore it
+4. Restore under original parent if it exists in active items
+5. Restore to top of list if parent absent
+6. Escape to close
+7. No checkboxes, no multi-select, no bulk actions
 8. No empty trash, no time windows, no auto-purge
-9. Close on Escape
