@@ -13,8 +13,8 @@ Scope cut: No due dates, assignees, collaboration, real-time sync, offline-first
 
 ## Phase 2 — Core Features
 
-3. **Checkbox + done UI** — v1 scope: 2 states (open/done), no cascade, checkbox on every item, hide completed toggle (H key), clickable "N hidden — show" indicator. See `checkvist-research/checkbox-done-ui.md` for research and scope decisions.
-4. **Soft delete + trash** — add `deletedAt: number | null` to `OutlineItem`, filter deleted items from active view, trash view to browse deleted items, restore action, "empty trash" for permanent delete
+3. **Checkbox + done UI** — v1 scope: 2 states (open/done), no cascade, checkbox on every item, hide completed toggle (H key), clickable "N hidden — show" indicator.
+4. **Soft delete + restore dialog** — `deletedAt` timestamp on items, cascade delete to children, filter deleted from active view, restore dialog (`rd` shortcut) with selectable list of deleted items, restored items placed at top of list (or under original parent if still in place)
 5. **Archive** — add `archivedAt: number | null` to `OutlineItem`, archive action for done items, archive view, bulk "archive all done" command
 6. **Notes panel** — expand/collapse note area on focused item, inline edit, keyboard shortcut to toggle
 7. **Multiple lists** — `List` model (`id`, `name`, `sortKey`, `createdAt`), list switcher in sidebar/top bar, items scoped to active list via `listId` field, default list on first load
@@ -37,7 +37,7 @@ Scope cut: No due dates, assignees, collaboration, real-time sync, offline-first
 | 1 | Enable persistence + clean test data | Done |
 | 2 | Fix library fragility | Parked — replace incrementally, finish before v1 ship |
 | 3 | Checkbox + done UI | Done |
-| 4 | Soft delete + trash | In Progress — soft delete done, restore dialog remaining |
+| 4 | Soft delete + restore dialog | In Progress — soft delete done, restore dialog remaining |
 | 5 | Archive | Not started |
 | 6 | Notes panel | Not started |
 | 7 | Multiple lists | Not started |
