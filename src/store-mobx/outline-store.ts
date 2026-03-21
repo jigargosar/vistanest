@@ -46,6 +46,7 @@ export const outlineStore = makeAutoObservable({
   editingId: null as string | null,
   filterQuery: '',
   commandPaletteOpen: false,
+  restoreDialogOpen: false,
   hideCompleted: false,
 
   get items(): OutlineItem[] {
@@ -65,6 +66,12 @@ export const outlineStore = makeAutoObservable({
 
   get completedCount(): number {
     return this.items.filter((i) => i.done).length
+  },
+
+  get deletedItems(): OutlineItem[] {
+    return this.allItems
+      .filter((i) => i.deletedAt !== null)
+      .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
   },
 
   pushUndo() {
@@ -128,6 +135,7 @@ export const outlineStore = makeAutoObservable({
   setFilterQuery(query: string) { this.filterQuery = query },
   setCommandPaletteOpen(open: boolean) { this.commandPaletteOpen = open },
   toggleCommandPalette() { this.commandPaletteOpen = !this.commandPaletteOpen },
+  toggleRestoreDialog() { this.restoreDialogOpen = !this.restoreDialogOpen },
 
   updateItemText(id: string, text: string) {
     this.pushUndo()
@@ -202,13 +210,26 @@ export const outlineStore = makeAutoObservable({
     }
   },
 
-  restoreLastDeleted() {
-    const deleted = this.allItems.filter((i) => i.deletedAt !== null)
-    if (deleted.length === 0) return
-    const lastTimestamp = Math.max(...deleted.map((i) => i.deletedAt!))
+  restoreItem(id: string) {
+    const item = this.allItems.find((i) => i.id === id)
+    if (!item || item.deletedAt === null) return
+
     this.pushUndo()
-    for (const item of this.allItems) {
-      if (item.deletedAt === lastTimestamp) item.deletedAt = null
+
+    // Restore item + all its deleted descendants
+    const descendantIds = new Set(getDescendantIds(this.allItems, id))
+    item.deletedAt = null
+    for (const d of this.allItems) {
+      if (descendantIds.has(d.id) && d.deletedAt !== null) d.deletedAt = null
+    }
+
+    // If original parent is not in active items, move to top of root
+    const parentIsActive = item.parentId !== null && this.items.some((i) => i.id === item.parentId)
+    if (!parentIsActive) {
+      item.parentId = null
+      const rootSiblings = getSiblings(this.items, null)
+      const firstKey = rootSiblings.length > 0 ? rootSiblings[0].sortKey : null
+      item.sortKey = sortKeyBetween(null, firstKey)
     }
   },
 

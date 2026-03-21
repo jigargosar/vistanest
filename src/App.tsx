@@ -4,6 +4,7 @@ import { TopBar } from './components/TopBar'
 import { OutlineTree } from './components/OutlineTree'
 import { BottomBar } from './components/BottomBar'
 import { CommandPalette } from './components/CommandPalette'
+import { RestoreDialog } from './components/RestoreDialog'
 import { setupKeyboard } from './lib/keyboard'
 
 export const App = observer(function App() {
@@ -15,6 +16,7 @@ export const App = observer(function App() {
       <OutlineTree />
       <BottomBar />
       <CommandPalette />
+      <RestoreDialog />
     </div>
   )
 })

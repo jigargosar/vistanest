@@ -37,6 +37,6 @@ export function setupKeyboard() {
 
     hk('F2',            store.startEditing),
     sq(['E', 'E'],      store.startEditing),
-    sq(['R', 'D'],      store.restoreLastDeleted),
+    sq(['R', 'D'],      store.toggleRestoreDialog),
   ], { ignoreInputs: true })
 }
